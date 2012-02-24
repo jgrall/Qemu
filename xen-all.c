@@ -1085,6 +1085,21 @@ int xen_hvm_init(void)
     unsigned long bufioreq_evtchn;
     XenIOState *state;
 
+    /* FIX */
+    {
+	int fd = open("/home/xentest/works/vms/fifo", O_RDWR);
+	char buf[1024];
+
+	if (fd == -1)
+	    hw_error("Could not open fifo\n");
+
+	i = snprintf(buf, 1024, "%d", xen_domid);
+	i = write(fd, buf, i + 1);
+	sleep(1);
+	i = read(fd, buf, 1024);
+    }
+    /* END FIX */
+
     state = g_malloc0(sizeof (XenIOState));
 
     state->xce_handle = xen_xc_evtchn_open(NULL, 0);
