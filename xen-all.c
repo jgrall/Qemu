@@ -39,6 +39,7 @@
 static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
+static unsigned int serverid;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -89,8 +90,6 @@ typedef struct XenIOState {
     XenEvtchn xce_handle;
     /* which vcpu we are serving */
     int send_vcpu;
-    /* Server id */
-    unsigned int serverid;
 
     struct xs_handle *xenstore;
     MemoryListener memory_listener;
@@ -113,6 +112,13 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
 {
     xc_hvm_set_pci_intx_level(xen_xc, xen_domid, 0, 0, irq_num >> 2,
                               irq_num & 3, level);
+}
+
+int xen_register_pci(PCIDevice *pci_dev)
+{
+    /* FIX: Missing bus number */
+    return xc_hvm_create_pci(xen_xc, xen_domid, serverid,
+			     pci_dev->devfn << 8);
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
@@ -749,6 +755,44 @@ static void cpu_ioreq_pio(ioreq_t *req)
     }
 }
 
+static void cpu_ioreq_config_space(ioreq_t *req)
+{
+    int i, sign;
+    uint64_t addr = 0xcfc + (req->addr & 0x3);
+    uint64_t cf8 = req->addr & (~0x3);
+
+    sign = req->df ? -1 : 1;
+
+    do_outp(0xcf8, 4, cf8);
+
+    if (req->dir == IOREQ_READ) {
+        if (!req->data_is_ptr) {
+            req->data = do_inp(addr, req->size);
+        } else {
+            uint32_t tmp;
+
+            for (i = 0; i < req->count; i++) {
+                tmp = do_inp(addr, req->size);
+                cpu_physical_memory_write(req->data + (sign * i * req->size),
+                        (uint8_t *) &tmp, req->size);
+            }
+        }
+    } else if (req->dir == IOREQ_WRITE) {
+        if (!req->data_is_ptr) {
+            do_outp(addr, req->size, req->data);
+        } else {
+            for (i = 0; i < req->count; i++) {
+                uint32_t tmp = 0;
+
+                cpu_physical_memory_read(req->data + (sign * i * req->size),
+                        (uint8_t*) &tmp, req->size);
+                do_outp(addr, req->size, tmp);
+            }
+        }
+    }
+}
+
+
 static void cpu_ioreq_move(ioreq_t *req)
 {
     uint32_t i;
@@ -799,6 +843,9 @@ static void handle_ioreq(ioreq_t *req)
         case IOREQ_TYPE_INVALIDATE:
             xen_invalidate_map_cache();
             break;
+	case IOREQ_TYPE_CONFIG_SPACE:
+	    cpu_ioreq_config_space(req);
+	    break;
         default:
             hw_error("Invalid ioreq type 0x%x\n", req->type);
     }
@@ -1140,12 +1187,12 @@ int xen_hvm_init(void)
         hw_error("map buffered IO page returned error %d", errno);
     }
 
-    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &state->serverid);
+    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &serverid);
 
     if (rc)
 	hw_error("registered server returned error %d", rc);
 
-    rc = xc_hvm_get_ioreq_server_ports(xen_xc, xen_domid, state->serverid,
+    rc = xc_hvm_get_ioreq_server_ports(xen_xc, xen_domid, serverid,
 				       ports);
 
     if (rc)

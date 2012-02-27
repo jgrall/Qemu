@@ -34,6 +34,7 @@
 #include "hw/pci/msi.h"
 #include "hw/pci/msix.h"
 #include "exec/address-spaces.h"
+#include "xen.h"
 
 //#define DEBUG_PCI
 #ifdef DEBUG_PCI
@@ -806,6 +807,10 @@ static PCIDevice *do_pci_register_device(PCIDevice *pci_dev, PCIBus *bus,
     pci_dev->devfn = devfn;
     pstrcpy(pci_dev->name, sizeof(pci_dev->name), name);
     pci_dev->irq_state = 0;
+
+    if (xen_enabled() && xen_register_pci(pci_dev))
+	return NULL;
+
     pci_config_alloc(pci_dev);
 
     pci_config_set_vendor_id(pci_dev->config, pc->vendor_id);
