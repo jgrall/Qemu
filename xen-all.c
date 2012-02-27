@@ -89,6 +89,8 @@ typedef struct XenIOState {
     XenEvtchn xce_handle;
     /* which vcpu we are serving */
     int send_vcpu;
+    /* Server id */
+    unsigned int serverid;
 
     struct xs_handle *xenstore;
     MemoryListener memory_listener;
@@ -1084,6 +1086,7 @@ int xen_hvm_init(void)
     unsigned long ioreq_pfn;
     unsigned long bufioreq_evtchn;
     XenIOState *state;
+    unsigned int ports[HVM_MAX_VCPUS];
 
     /* FIX */
     {
@@ -1137,12 +1140,25 @@ int xen_hvm_init(void)
         hw_error("map buffered IO page returned error %d", errno);
     }
 
+    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &state->serverid);
+
+    if (rc)
+	hw_error("registered server returned error %d", rc);
+
+    rc = xc_hvm_get_ioreq_server_ports(xen_xc, xen_domid, state->serverid,
+				       ports);
+
+    if (rc)
+	hw_error("retrieved ports returned error %d", rc);
+
+    assert(smp_cpus <= HVM_MAX_VCPUS);
+
     state->ioreq_local_port = g_malloc0(smp_cpus * sizeof (evtchn_port_t));
 
     /* FIXME: how about if we overflow the page here? */
     for (i = 0; i < smp_cpus; i++) {
         rc = xc_evtchn_bind_interdomain(state->xce_handle, xen_domid,
-                                        xen_vcpu_eport(state->shared_page, i));
+					ports[i]);
         if (rc == -1) {
             fprintf(stderr, "bind interdomain ioctl error %d\n", errno);
             return -1;
