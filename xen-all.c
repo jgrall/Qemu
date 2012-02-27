@@ -114,11 +114,15 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
                               irq_num & 3, level);
 }
 
-int xen_register_pci(PCIDevice *pci_dev)
+int xen_register_pcidev(PCIDevice *pci_dev)
 {
-    /* FIX: Missing bus number */
-    return xc_hvm_create_pci(xen_xc, xen_domid, serverid,
-			     pci_dev->devfn << 8);
+    uint32 bdf = 0;
+
+    /* Fix : missing bus id to be more generic */
+
+    bdf |= pci_dev->devfn << 8;
+
+    return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
@@ -843,7 +847,7 @@ static void handle_ioreq(ioreq_t *req)
         case IOREQ_TYPE_INVALIDATE:
             xen_invalidate_map_cache();
             break;
-	case IOREQ_TYPE_CONFIG_SPACE:
+	case IOREQ_TYPE_PCI_CONFIG:
 	    cpu_ioreq_config_space(req);
 	    break;
         default:

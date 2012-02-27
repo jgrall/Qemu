@@ -808,7 +808,7 @@ static PCIDevice *do_pci_register_device(PCIDevice *pci_dev, PCIBus *bus,
     pstrcpy(pci_dev->name, sizeof(pci_dev->name), name);
     pci_dev->irq_state = 0;
 
-    if (xen_enabled() && xen_register_pci(pci_dev))
+    if (xen_enabled() && xen_register_pcidev(pci_dev))
 	return NULL;
 
     pci_config_alloc(pci_dev);
