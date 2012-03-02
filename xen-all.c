@@ -147,6 +147,18 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
     xen_xc_hvm_inject_msi(xen_xc, xen_domid, addr, data);
 }
 
+void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
+{
+    xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
+					addr, addr + size - 1);
+}
+
+void xen_unmap_iorange(uint64_t addr, uint64_t size, int is_mmio)
+{
+    xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
+					    addr);
+}
+
 static void xen_suspend_notifier(Notifier *notifier, void *data)
 {
     xc_set_hvm_param(xen_xc, xen_domid, HVM_PARAM_ACPI_S_STATE, 3);
@@ -1019,7 +1031,11 @@ static void xenstore_record_dm_state(struct xs_handle *xs, const char *state)
         exit(1);
     }
 
-    snprintf(path, sizeof (path), "/local/domain/0/device-model/%u/state", xen_domid);
+    if (!xen_daemonid)
+	snprintf(path, sizeof (path), "/local/domain/0/device-model/%u/state", xen_domid);
+    else
+	snprintf(path, sizeof (path), "/local/domain/0/daemons/%u/%u/state",
+		 xen_domid, xen_daemonid);
     if (!xs_write(xs, XBT_NULL, path, state, strlen(state))) {
         fprintf(stderr, "error recording dm state\n");
         exit(1);

@@ -268,6 +268,7 @@ bool kvm_allowed;
 bool xen_allowed;
 uint32_t xen_domid;
 enum xen_mode xen_mode = XEN_EMULATE;
+uint32_t xen_daemonid = 0;
 static int tcg_tb_size;
 
 static int default_serial = 1;
@@ -3726,7 +3727,14 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 xen_mode = XEN_ATTACH;
-                break;
+		break;
+	    case QEMU_OPTION_xen_daemonid:
+                if (!(xen_available())) {
+                    printf("Option %s not supported for this target\n", popt->name);
+                    exit(1);
+                }
+                xen_daemonid = atoi(optarg);
+		break;
             case QEMU_OPTION_trace:
             {
                 opts = qemu_opts_parse(qemu_find_opts("trace"), optarg, 0);
