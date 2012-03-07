@@ -40,6 +40,7 @@ static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
 static unsigned int serverid;
+static int is_running = 0;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -1065,6 +1066,7 @@ static void xen_change_state_handler(void *opaque, int running,
                                      RunState state)
 {
     if (running) {
+	is_running = 1;
         /* record state running */
         xenstore_record_dm_state(xenstore, "running");
     }
