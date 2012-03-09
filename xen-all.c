@@ -240,6 +240,10 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr)
         return;
     }
 
+    if (xen_map_cache(ram_addr, size, 0)) {
+	return;
+    }
+
     trace_xen_ram_alloc(ram_addr, size);
 
     nr_pfn = size >> TARGET_PAGE_BITS;
