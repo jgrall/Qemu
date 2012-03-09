@@ -235,6 +235,7 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr)
                 __func__, size, ram_addr); 
         return;
     }
+    printf("ram_alloc addr=0x%lx size=0x%lx\n", ram_addr, size);
 
     if (mr == &ram_memory) {
         return;
@@ -459,6 +460,9 @@ static void xen_set_memory(struct MemoryListener *listener,
           && ( (log_dirty && add) || (!log_dirty && !add)))) {
         return;
     }
+
+    printf("xen_set_memory add=%d name=%s\n",
+	   add, section->mr->name);
 
     trace_xen_client_set_memory(start_addr, size, log_dirty);
 
