@@ -26,7 +26,7 @@
 #include <xen/hvm/params.h>
 #include <xen/hvm/e820.h>
 
-//#define DEBUG_XEN
+// #define DEBUG_XEN
 
 #ifdef DEBUG_XEN
 #define DPRINTF(fmt, ...) \
@@ -1163,7 +1163,6 @@ int xen_hvm_init(void)
     unsigned long ioreq_pfn;
     unsigned long bufioreq_evtchn;
     XenIOState *state;
-    unsigned int ports[HVM_MAX_VCPUS];
 
     state = g_malloc0(sizeof (XenIOState));
 
@@ -1185,8 +1184,13 @@ int xen_hvm_init(void)
     state->suspend.notify = xen_suspend_notifier;
     qemu_register_suspend_notifier(&state->suspend);
 
-    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IOREQ_PFN, &ioreq_pfn);
-    DPRINTF("shared page at pfn %lx\n", ioreq_pfn);
+    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &serverid);
+
+    if (rc)
+	hw_error("registered server returned error %d", rc);
+
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IO_PFN_FIRST, &ioreq_pfn);
+    ioreq_pfn += (serverid - 1) * 2 + 1;
     state->shared_page = xc_map_foreign_range(xen_xc, xen_domid, XC_PAGE_SIZE,
                                               PROT_READ|PROT_WRITE, ioreq_pfn);
     if (state->shared_page == NULL) {
@@ -1194,24 +1198,13 @@ int xen_hvm_init(void)
                  errno, xen_xc);
     }
 
-    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_PFN, &ioreq_pfn);
+    ioreq_pfn += 1;
     DPRINTF("buffered io page at pfn %lx\n", ioreq_pfn);
     state->buffered_io_page = xc_map_foreign_range(xen_xc, xen_domid, XC_PAGE_SIZE,
                                                    PROT_READ|PROT_WRITE, ioreq_pfn);
     if (state->buffered_io_page == NULL) {
         hw_error("map buffered IO page returned error %d", errno);
     }
-
-    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &serverid);
-
-    if (rc)
-	hw_error("registered server returned error %d", rc);
-
-    rc = xc_hvm_get_ioreq_server_ports(xen_xc, xen_domid, serverid,
-				       ports);
-
-    if (rc)
-	hw_error("retrieved ports returned error %d", rc);
 
     assert(smp_cpus <= HVM_MAX_VCPUS);
 
@@ -1220,7 +1213,7 @@ int xen_hvm_init(void)
     /* FIXME: how about if we overflow the page here? */
     for (i = 0; i < smp_cpus; i++) {
         rc = xc_evtchn_bind_interdomain(state->xce_handle, xen_domid,
-					ports[i]);
+					state->shared_page->vcpu_ioreq[i].vp_eport);
         if (rc == -1) {
             fprintf(stderr, "bind interdomain ioctl error %d\n", errno);
             return -1;
