@@ -281,6 +281,16 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
 
 void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
 {
+    static uint64_t previous_addr = ~0;
+
+    /* Don't register multiple times the same ioport */
+    if (!is_mmio)
+    {
+	if (addr == previous_addr)
+	    return;
+	previous_addr = addr;
+    }
+
     if (!is_running)
     {
 	if (check_range(addr, size, is_mmio))

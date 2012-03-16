@@ -140,8 +140,8 @@ static int ioport_bsize(int size, int *bsize)
 }
 
 /* size is the word size in byte */
-static int __register_ioport_read(pio_addr_t start, int length, int size,
-				  IOPortReadFunc *func, void *opaque)
+int register_ioport_read(pio_addr_t start, int length, int size,
+			 IOPortReadFunc *func, void *opaque)
 {
     int i, bsize;
 
@@ -156,25 +156,20 @@ static int __register_ioport_read(pio_addr_t start, int length, int size,
                      i);
         ioport_opaque[i] = opaque;
     }
-    return 0;
-}
 
-int register_ioport_read(pio_addr_t start, int length, int size,
-			 IOPortReadFunc *func, void *opaque)
-{
     if (xen_enabled())
     {
 	printf("map io 0x%x - 0x%x\n", start,
-	       start + length);
+	       start + length - 1);
 	xen_map_iorange(start, length, 0);
     }
 
-    return __register_ioport_read(start, length, size, func, opaque);
+    return 0;
 }
 
 /* size is the word size in byte */
-static int __register_ioport_write(pio_addr_t start, int length, int size,
-				   IOPortWriteFunc *func, void *opaque)
+int register_ioport_write(pio_addr_t start, int length, int size,
+			  IOPortWriteFunc *func, void *opaque)
 {
     int i, bsize;
 
@@ -189,19 +184,16 @@ static int __register_ioport_write(pio_addr_t start, int length, int size,
                      i);
         ioport_opaque[i] = opaque;
     }
-    return 0;
-}
 
-int register_ioport_write(pio_addr_t start, int length, int size,
-			  IOPortWriteFunc *func, void *opaque)
-{
     if (xen_enabled())
     {
 	printf("map io 0x%x - 0x%x\n", start,
-	       start + length);
+	       start + length - 1);
 	xen_map_iorange(start, length, 0);
     }
-    return __register_ioport_write(start, length, size, func, opaque);
+
+    return 0;
+
 }
 
 static uint32_t ioport_readb_thunk(void *opaque, uint32_t addr)
@@ -276,12 +268,6 @@ void ioport_register(IORange *ioport)
     register_ioport_write(ioport->base, ioport->len, 4,
                           ioport_writel_thunk, ioport);
     ioport_destructor_table[ioport->base] = iorange_destructor_thunk;
-    if (xen_enabled())
-    {
-	printf("map io 0x%lx - 0x%lx\n", ioport->base,
-	       ioport->base + ioport->len);
-	xen_map_iorange(ioport->base, ioport->len, 0);
-    }
 }
 
 void isa_unassign_ioport(pio_addr_t start, int length)
