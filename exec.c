@@ -1722,7 +1722,7 @@ static void io_region_add(MemoryListener *listener,
 {
     MemoryRegionIORange *mrio = g_new(MemoryRegionIORange, 1);
 
-    printf("io %s\n", fr->mr->name);
+    printf("io %s\n", section->mr->name);
 
     mrio->mr = section->mr;
     mrio->offset = section->offset_within_region;

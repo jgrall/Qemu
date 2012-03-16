@@ -279,17 +279,16 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
     return rc;
 }
 
-void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio,
-		     const char *name)
+void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
 {
     if (!is_running)
     {
 	if (check_range(addr, size, is_mmio))
 	{
-	    printf("disabled %s\n", name);
+	    printf("disabled\n");
 	    return;
 	}
-	printf("enabled %s\n", name);
+	printf("enabled\n");
     }
 
     xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
