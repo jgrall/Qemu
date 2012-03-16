@@ -115,15 +115,71 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
                               irq_num & 3, level);
 }
 
+
+static uint32_t str_to_bdf(const char *str)
+{
+    /* We assume that bdf is valid */
+    char *buf;
+    uint32_t bdf;
+    uint32_t tmp;
+
+    bdf = strtol(str, &buf, 16);
+    buf++;
+
+    str = buf;
+    tmp = strtol(str, &buf, 16);
+    bdf = (bdf << 16) | (tmp << 11);
+    buf++;
+
+    str = buf;
+    tmp = strtol(str, &buf, 16);
+    bdf = bdf | (tmp << 8);
+
+    return bdf;
+}
+
 int xen_register_pcidev(PCIDevice *pci_dev)
 {
-    uint32 bdf = 0;
+    uint32_t bdf = 0;
+    uint32_t allowed_bdf = 0;
+    char **dir;
+    char path[50];
+    unsigned int nb;
+    unsigned int i;
+    unsigned int len;
+    char *str;
+    int rc = 0;
+
 
     /* Fix : missing bus id to be more generic */
-
     bdf |= pci_dev->devfn << 8;
+    snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci",
+	     xen_domid, xen_daemonid);
 
-    return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
+    dir = xs_directory(xenstore, XBT_NULL, path, &nb);
+    if (dir)
+    {
+	for (i = 0; i < nb; i++)
+	{
+	    snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci/%s",
+		     xen_domid, xen_daemonid, dir[i]);
+	    str = xs_read(xenstore, XBT_NULL, path, &len);
+	    printf("Check %s\n", str);
+	    allowed_bdf = str_to_bdf(str);
+	    if (bdf == allowed_bdf)
+		printf("BDF %s allowed\n", str);
+	    free(str);
+	    if (bdf == allowed_bdf)
+	    {
+		rc = xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
+		break;
+	    }
+	}
+    }
+
+    free(dir);
+
+    return rc;
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
