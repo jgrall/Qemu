@@ -140,6 +140,7 @@ static uint32_t str_to_bdf(const char *str)
 
 int xen_register_pcidev(PCIDevice *pci_dev)
 {
+    struct xs_handle *xs = NULL;
     uint32_t bdf = 0;
     uint32_t allowed_bdf = 0;
     char **dir;
@@ -153,18 +154,25 @@ int xen_register_pcidev(PCIDevice *pci_dev)
 
     /* Fix : missing bus id to be more generic */
     bdf |= pci_dev->devfn << 8;
+
+    xs = xs_open(0);
+    if (!xs)
+    {
+	fprintf(stderr, "pci_register: Unable to open xenstore\n");
+	return 1;
+    }
+
     snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci",
 	     xen_domid, xen_daemonid);
 
-    dir = xs_directory(xenstore, XBT_NULL, path, &nb);
+    dir = xs_directory(xs, XBT_NULL, path, &nb);
     if (dir)
     {
 	for (i = 0; i < nb; i++)
 	{
 	    snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci/%s",
 		     xen_domid, xen_daemonid, dir[i]);
-	    str = xs_read(xenstore, XBT_NULL, path, &len);
-	    printf("Check %s\n", str);
+	    str = xs_read(xs, XBT_NULL, path, &len);
 	    allowed_bdf = str_to_bdf(str);
 	    if (bdf == allowed_bdf)
 		printf("BDF %s allowed\n", str);
@@ -175,9 +183,10 @@ int xen_register_pcidev(PCIDevice *pci_dev)
 		break;
 	    }
 	}
+	free(dir);
     }
 
-    free(dir);
+    xs_close(xs);
 
     return rc;
 }
@@ -204,8 +213,85 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
     xen_xc_hvm_inject_msi(xen_xc, xen_domid, addr, data);
 }
 
-void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
+static void str_to_range(const char *str, uint64_t *begin, uint64_t *end)
 {
+    char *buf;
+
+    /* We assume that range is valid  */
+    *begin = strtoll(str, &buf, 0);
+    if (buf[0] == '\0')
+    {
+	*end = *begin;
+	return;
+    }
+
+    str = buf + 1;
+    *end = strtoll(str, &buf, 0);
+}
+
+static int check_range(uint64_t addr, uint64_t size, int is_mmio)
+{
+    struct xs_handle *xs = NULL;
+    char **dir;
+    char *str;
+    int rc = 1;
+    int i;
+    uint64_t begin;
+    uint64_t end;
+    char base[70];
+    char path[70];
+    unsigned int nb;
+    unsigned int len;
+
+    xs = xs_open(0);
+    if (!xs)
+    {
+	fprintf(stderr, "check_range: unable to open xenstore\n");
+	return 1;
+    }
+
+    snprintf(base, sizeof (base), "/local/domain/%u/image/daemons/%u/%s",
+	     xen_domid, xen_daemonid, (is_mmio) ? "mmio" : "pio");
+
+    dir = xs_directory(xs, XBT_NULL, base, &nb);
+
+    if (dir)
+    {
+	for (i = 0; i < nb; i++)
+	{
+	    snprintf(path, sizeof (path), "%s/%s", base, dir[i]);
+	    str = xs_read(xs, XBT_NULL, path, &len);
+	    if (is_mmio)
+	    {
+		printf("Check %s\n", str);
+	    }
+	    str_to_range(str, &begin, &end);
+	    free(str);
+	    if (addr == begin && (addr + size - 1) == end)
+	    {
+		rc = 0;
+		break;
+	    }
+	}
+	free(dir);
+    }
+
+    return rc;
+}
+
+void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio,
+		     const char *name)
+{
+    if (!is_running)
+    {
+	if (check_range(addr, size, is_mmio))
+	{
+	    printf("disabled %s\n", name);
+	    return;
+	}
+	printf("enabled %s\n", name);
+    }
+
     xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
 					addr, addr + size - 1);
 }
