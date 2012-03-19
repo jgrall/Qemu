@@ -466,7 +466,6 @@ static AddressSpace *memory_region_to_address_space(MemoryRegion *mr)
             return as;
         }
     }
-
     abort();
 }
 
