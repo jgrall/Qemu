@@ -158,7 +158,7 @@ int register_ioport_read(pio_addr_t start, int length, int size,
     }
 
     if (xen_enabled()) {
-	xen_map_iorange(start, length, 0);
+        xen_map_iorange(start, length, 0);
     }
 
     return 0;
@@ -183,7 +183,7 @@ int register_ioport_write(pio_addr_t start, int length, int size,
     }
 
     if (xen_enabled()) {
-	xen_map_iorange(start, length, 0);
+        xen_map_iorange(start, length, 0);
     }
 
     return 0;
@@ -274,7 +274,7 @@ void isa_unassign_ioport(pio_addr_t start, int length)
     }
 
     if (xen_enabled()) {
-	xen_unmap_iorange(start, length, 0);
+        xen_unmap_iorange(start, length, 0);
     }
 
     for(i = start; i < start + length; i++) {
