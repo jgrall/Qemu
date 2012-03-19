@@ -141,7 +141,7 @@ static int ioport_bsize(int size, int *bsize)
 
 /* size is the word size in byte */
 int register_ioport_read(pio_addr_t start, int length, int size,
-			 IOPortReadFunc *func, void *opaque)
+                         IOPortReadFunc *func, void *opaque)
 {
     int i, bsize;
 
