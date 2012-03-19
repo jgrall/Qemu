@@ -157,10 +157,7 @@ int register_ioport_read(pio_addr_t start, int length, int size,
         ioport_opaque[i] = opaque;
     }
 
-    if (xen_enabled())
-    {
-	printf("map io 0x%x - 0x%x\n", start,
-	       start + length - 1);
+    if (xen_enabled()) {
 	xen_map_iorange(start, length, 0);
     }
 
@@ -185,10 +182,7 @@ int register_ioport_write(pio_addr_t start, int length, int size,
         ioport_opaque[i] = opaque;
     }
 
-    if (xen_enabled())
-    {
-	printf("map io 0x%x - 0x%x\n", start,
-	       start + length - 1);
+    if (xen_enabled()) {
 	xen_map_iorange(start, length, 0);
     }
 
@@ -278,8 +272,10 @@ void isa_unassign_ioport(pio_addr_t start, int length)
         ioport_destructor_table[start](ioport_opaque[start]);
         ioport_destructor_table[start] = NULL;
     }
-    if (xen_enabled())
+
+    if (xen_enabled()) {
 	xen_unmap_iorange(start, length, 0);
+    }
 
     for(i = start; i < start + length; i++) {
         ioport_read_table[0][i] = NULL;
