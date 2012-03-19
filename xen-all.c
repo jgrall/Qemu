@@ -971,44 +971,6 @@ static void cpu_ioreq_pio(ioreq_t *req)
     }
 }
 
-static void cpu_ioreq_config_space(ioreq_t *req)
-{
-    int i, sign;
-    uint64_t addr = 0xcfc + (req->addr & 0x3);
-    uint64_t cf8 = req->addr & (~0x3);
-
-    sign = req->df ? -1 : 1;
-
-    do_outp(0xcf8, 4, cf8);
-
-    if (req->dir == IOREQ_READ) {
-        if (!req->data_is_ptr) {
-            req->data = do_inp(addr, req->size);
-        } else {
-            uint32_t tmp;
-
-            for (i = 0; i < req->count; i++) {
-                tmp = do_inp(addr, req->size);
-                cpu_physical_memory_write(req->data + (sign * i * req->size),
-                        (uint8_t *) &tmp, req->size);
-            }
-        }
-    } else if (req->dir == IOREQ_WRITE) {
-        if (!req->data_is_ptr) {
-            do_outp(addr, req->size, req->data);
-        } else {
-            for (i = 0; i < req->count; i++) {
-                uint32_t tmp = 0;
-
-                cpu_physical_memory_read(req->data + (sign * i * req->size),
-                        (uint8_t*) &tmp, req->size);
-                do_outp(addr, req->size, tmp);
-            }
-        }
-    }
-}
-
-
 static void cpu_ioreq_move(ioreq_t *req)
 {
     uint32_t i;
@@ -1038,6 +1000,17 @@ static void cpu_ioreq_move(ioreq_t *req)
             }
         }
     }
+}
+
+static void cpu_ioreq_config_space(ioreq_t *req)
+{
+    uint64_t addr = req->addr;
+    uint64_t cf8 = req->addr & (~0x3);
+
+    req->addr = 0xcfc + (addr & 0x3);
+    do_outp(0xcf8, 4, cf8);
+    cpu_ioreq_pio(req);
+    req->addr = addr;
 }
 
 static void handle_ioreq(ioreq_t *req)
