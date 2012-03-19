@@ -3734,7 +3734,7 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 xen_daemonid = atoi(optarg);
-		break;
+                break;
             case QEMU_OPTION_trace:
             {
                 opts = qemu_opts_parse(qemu_find_opts("trace"), optarg, 0);
