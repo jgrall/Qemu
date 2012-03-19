@@ -1265,8 +1265,7 @@ static void xen_change_state_handler(void *opaque, int running,
                                      RunState state)
 {
     if (running) {
-	is_running = 1;
-	printf("Running\n");
+        is_running = 1;
         /* record state running */
         xenstore_record_dm_state(xenstore, "running");
     }
