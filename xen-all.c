@@ -68,6 +68,46 @@ static inline ioreq_t *xen_vcpu_ioreq(shared_iopage_t *shared_page, int vcpu)
 #define HVM_PARAM_BUFIOREQ_EVTCHN 26
 #endif
 
+#if __XEN_LATEST_INTERFACE_VERSION__ < 0x00040200
+static inline unsigned long xen_buffered_iopage()
+{
+    unsigned long pfn;
+
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_PFN, &pfn);
+
+    return pfn;
+}
+
+static inline unsigned long xen_iopage(void)
+{
+    unsigned long pfn;
+
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_PFN, &pfn);
+
+    return pfn;
+}
+#else
+static inline unsigned long xen_buffered_iopage(void)
+{
+    unsigned long pfn;
+
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IO_PFN_FIRST, &pfn);
+    pfn += (serverid - 1) * 2 + 2;
+
+    return pfn;
+}
+
+static inline unsigned long xen_iopage(void)
+{
+    unsigned long pfn;
+
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IO_PFN_FIRST, &pfn);
+    pfn += (serverid - 1) * 2 + 1;
+
+    return pfn;
+}
+#endif
+
 #define BUFFER_IO_MAX_DELAY  100
 
 typedef struct XenPhysmap {
@@ -1341,8 +1381,8 @@ int xen_hvm_init(void)
     if (rc)
 	hw_error("registered server returned error %d", rc);
 
-    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IO_PFN_FIRST, &ioreq_pfn);
-    ioreq_pfn += (serverid - 1) * 2 + 1;
+    ioreq_pfn = xen_iopage();
+    DPRINTF("shared page at pfn %lx\n", ioreq_pfn);
     state->shared_page = xc_map_foreign_range(xen_xc, xen_domid, XC_PAGE_SIZE,
                                               PROT_READ|PROT_WRITE, ioreq_pfn);
     if (state->shared_page == NULL) {
@@ -1350,7 +1390,7 @@ int xen_hvm_init(void)
                  errno, xen_xc);
     }
 
-    ioreq_pfn += 1;
+    ioreq_pfn = xen_buffered_iopage();
     DPRINTF("buffered io page at pfn %lx\n", ioreq_pfn);
     state->buffered_io_page = xc_map_foreign_range(xen_xc, xen_domid, XC_PAGE_SIZE,
                                                    PROT_READ|PROT_WRITE, ioreq_pfn);
@@ -1365,7 +1405,7 @@ int xen_hvm_init(void)
     /* FIXME: how about if we overflow the page here? */
     for (i = 0; i < smp_cpus; i++) {
         rc = xc_evtchn_bind_interdomain(state->xce_handle, xen_domid,
-					state->shared_page->vcpu_ioreq[i].vp_eport);
+                                        xen_vcpu_eport(state->shared_page, i));
         if (rc == -1) {
             fprintf(stderr, "bind interdomain ioctl error %d\n", errno);
             return -1;
