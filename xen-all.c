@@ -26,7 +26,7 @@
 #include <xen/hvm/params.h>
 #include <xen/hvm/e820.h>
 
-// #define DEBUG_XEN
+//#define DEBUG_XEN
 
 #ifdef DEBUG_XEN
 #define DPRINTF(fmt, ...) \
@@ -154,7 +154,6 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
     xc_hvm_set_pci_intx_level(xen_xc, xen_domid, 0, 0, irq_num >> 2,
                               irq_num & 3, level);
 }
-
 
 static uint32_t str_to_bdf(const char *str)
 {
@@ -426,7 +425,6 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr)
                 __func__, size, ram_addr); 
         return;
     }
-    printf("ram_alloc addr=0x%lx size=0x%lx\n", ram_addr, size);
 
     if (mr == &ram_memory) {
         return;
@@ -651,9 +649,6 @@ static void xen_set_memory(struct MemoryListener *listener,
           && ( (log_dirty && add) || (!log_dirty && !add)))) {
         return;
     }
-
-    printf("xen_set_memory add=%d name=%s\n",
-	   add, section->mr->name);
 
     trace_xen_client_set_memory(start_addr, size, log_dirty);
 

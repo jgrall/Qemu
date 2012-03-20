@@ -1722,8 +1722,6 @@ static void io_region_add(MemoryListener *listener,
 {
     MemoryRegionIORange *mrio = g_new(MemoryRegionIORange, 1);
 
-    printf("io %s\n", section->mr->name);
-
     mrio->mr = section->mr;
     mrio->offset = section->offset_within_region;
     iorange_init(&mrio->iorange, &memory_region_iorange_ops,

@@ -1032,8 +1032,6 @@ static void pci_update_mappings(PCIDevice *d)
         if (new_addr == r->addr)
             continue;
 
-	printf("Update mapping 0:%x.%x addr 0x%lx\n", d->devfn >> 3, d->devfn & 0x7, new_addr);
-
         /* now do the real mapping */
         if (r->addr != PCI_BAR_UNMAPPED) {
             memory_region_del_subregion(r->address_space, r->memory);

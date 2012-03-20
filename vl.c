@@ -3727,7 +3727,7 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 xen_mode = XEN_ATTACH;
-		break;
+                break;
 	    case QEMU_OPTION_xen_daemonid:
                 if (!(xen_available())) {
                     printf("Option %s not supported for this target\n", popt->name);
