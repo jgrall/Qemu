@@ -201,16 +201,16 @@ int xen_register_pcidev(PCIDevice *pci_dev)
 	return 1;
     }
 
-    snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci",
-	     xen_domid, xen_daemonid);
+    snprintf(path, sizeof (path), "/local/domain/%u/image/dms/%u/pci",
+	     xen_domid, xen_dmid);
 
     dir = xs_directory(xs, XBT_NULL, path, &nb);
     if (dir)
     {
 	for (i = 0; i < nb; i++)
 	{
-	    snprintf(path, sizeof (path), "/local/domain/%u/image/daemons/%u/pci/%s",
-		     xen_domid, xen_daemonid, dir[i]);
+	    snprintf(path, sizeof (path), "/local/domain/%u/image/dms/%u/pci/%s",
+		     xen_domid, xen_dmid, dir[i]);
 	    str = xs_read(xs, XBT_NULL, path, &len);
 	    allowed_bdf = str_to_bdf(str);
 	    if (bdf == allowed_bdf)
@@ -289,8 +289,8 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
 	return 1;
     }
 
-    snprintf(base, sizeof (base), "/local/domain/%u/image/daemons/%u/%s",
-	     xen_domid, xen_daemonid, (is_mmio) ? "mmio" : "pio");
+    snprintf(base, sizeof (base), "/local/domain/%u/image/dms/%u/%s",
+	     xen_domid, xen_dmid, (is_mmio) ? "mmio" : "pio");
 
     dir = xs_directory(xs, XBT_NULL, base, &nb);
 
@@ -1199,11 +1199,11 @@ static void xenstore_record_dm_state(struct xs_handle *xs, const char *state)
         exit(1);
     }
 
-    if (!xen_daemonid)
+    if (!xen_dmid)
 	snprintf(path, sizeof (path), "/local/domain/0/device-model/%u/state", xen_domid);
     else
-	snprintf(path, sizeof (path), "/local/domain/0/daemons/%u/%u/state",
-		 xen_domid, xen_daemonid);
+	snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/state",
+		 xen_domid, xen_dmid);
     if (!xs_write(xs, XBT_NULL, path, state, strlen(state))) {
         fprintf(stderr, "error recording dm state\n");
         exit(1);
@@ -1364,8 +1364,6 @@ int xen_hvm_init(void)
     if (state->buffered_io_page == NULL) {
         hw_error("map buffered IO page returned error %d", errno);
     }
-
-    assert(smp_cpus <= HVM_MAX_VCPUS);
 
     state->ioreq_local_port = g_malloc0(smp_cpus * sizeof (evtchn_port_t));
 
