@@ -166,7 +166,7 @@ int register_ioport_read(pio_addr_t start, int length, int size,
 
 /* size is the word size in byte */
 int register_ioport_write(pio_addr_t start, int length, int size,
-			  IOPortWriteFunc *func, void *opaque)
+                          IOPortWriteFunc *func, void *opaque)
 {
     int i, bsize;
 
