@@ -167,12 +167,12 @@ static uint32_t str_to_bdf(const char *str)
 
     str = buf;
     tmp = strtol(str, &buf, 16);
-    bdf = (bdf << 16) | (tmp << 11);
+    bdf = (bdf << 8) | (tmp << 3);
     buf++;
 
     str = buf;
     tmp = strtol(str, &buf, 16);
-    bdf = bdf | (tmp << 8);
+    bdf = bdf | tmp;
 
     return bdf;
 }
@@ -192,7 +192,7 @@ int xen_register_pcidev(PCIDevice *pci_dev)
 
 
     /* Fix : missing bus id to be more generic */
-    bdf |= pci_dev->devfn << 8;
+    bdf |= pci_dev->devfn;
 
     xs = xs_open(0);
     if (!xs) {
