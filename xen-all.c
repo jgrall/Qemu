@@ -134,6 +134,7 @@ typedef struct XenIOState {
 
     struct xs_handle *xenstore;
     MemoryListener memory_listener;
+    MemoryListener io_listener;
     QLIST_HEAD(, XenPhysmap) physmap;
     hwaddr free_phys_offset;
     const XenPhysmap *log_for_dirtybit;
@@ -313,6 +314,9 @@ void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
             return;
         previous_addr = addr;
     }
+
+    if (!is_mmio)
+        printf("try to map io 0x%lx - 0x%lx\n", addr, addr + size - 1);
 
     if (!is_running) {
         if (check_range(addr, size, is_mmio)) {
@@ -772,6 +776,83 @@ void qmp_xen_set_global_dirty_log(bool enable, Error **errp)
         memory_global_dirty_log_stop();
     }
 }
+
+static void xen_io_begin(MemoryListener *listener)
+{
+}
+
+static void xen_io_commit(MemoryListener *listener)
+{
+}
+
+static void xen_io_region_add(MemoryListener *listener,
+                           MemoryRegionSection *section)
+{
+    printf("io region %s add 0x%lx-0x%lx %p\n",
+           section->mr->name,
+           section->offset_within_address_space,
+           section->offset_within_address_space + section->size - 1,
+           section->address_space);
+}
+
+static void xen_io_region_del(MemoryListener *listener,
+                           MemoryRegionSection *section)
+{
+}
+
+static void xen_io_region_nop(MemoryListener *listener,
+                           MemoryRegionSection *section)
+{
+}
+
+static void xen_io_log_start(MemoryListener *listener,
+                          MemoryRegionSection *section)
+{
+}
+
+static void xen_io_log_stop(MemoryListener *listener, MemoryRegionSection *section)
+{
+}
+
+static void xen_io_log_sync(MemoryListener *listener, MemoryRegionSection *section)
+{
+}
+
+static void xen_io_log_global_start(MemoryListener *listener)
+{
+}
+
+static void xen_io_log_global_stop(MemoryListener *listener)
+{
+}
+
+static void xen_io_eventfd_add(MemoryListener *listener,
+                            MemoryRegionSection *section,
+                            bool match_data, uint64_t data, int fd)
+{
+}
+
+static void xen_io_eventfd_del(MemoryListener *listener,
+                            MemoryRegionSection *section,
+                            bool match_data, uint64_t data, int fd)
+{
+}
+
+static MemoryListener xen_io_listener = {
+    .begin = xen_io_begin,
+    .commit = xen_io_commit,
+    .region_add = xen_io_region_add,
+    .region_del = xen_io_region_del,
+    .region_nop = xen_io_region_nop,
+    .log_start = xen_io_log_start,
+    .log_stop = xen_io_log_stop,
+    .log_sync = xen_io_log_sync,
+    .log_global_start = xen_io_log_global_start,
+    .log_global_stop = xen_io_log_global_stop,
+    .eventfd_add = xen_io_eventfd_add,
+    .eventfd_del = xen_io_eventfd_del,
+    .priority = 10,
+};
 
 /* VCPU Operations, MMIO, IO ring ... */
 
@@ -1385,6 +1466,9 @@ int xen_hvm_init(void)
     QLIST_INIT(&state->physmap);
     memory_listener_register(&state->memory_listener, &address_space_memory);
     state->log_for_dirtybit = NULL;
+
+    state->io_listener = xen_io_listener;
+    memory_listener_register(&state->io_listener, get_system_io());
 
     /* Initialize backend core & drivers */
     if (xen_be_init() != 0) {
