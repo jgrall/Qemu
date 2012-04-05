@@ -304,7 +304,8 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
     return rc;
 }
 
-void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
+static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
+                            int is_mmio)
 {
     static uint64_t previous_addr = ~0;
 
@@ -317,21 +318,25 @@ void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
 
     if (!is_mmio)
         printf("try to map io 0x%lx - 0x%lx\n", addr, addr + size - 1);
+    else
+        printf("try to map mmio 0x%lx - 0x%lx\n", addr, addr + size - 1);
 
     if (!is_running) {
         if (check_range(addr, size, is_mmio)) {
             return;
-        }
+         }
     }
 
+    printf("mapped\n");
     xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
                                         addr, addr + size - 1);
 }
 
-void xen_unmap_iorange(uint64_t addr, uint64_t size, int is_mmio)
+static void xen_unmap_iorange(target_phys_addr_t addr, uint64_t size,
+                              int is_mmio)
 {
-    xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
-                                            addr);
+    xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid,
+                                            is_mmio, addr);
 }
 
 static void xen_suspend_notifier(Notifier *notifier, void *data)
@@ -663,12 +668,16 @@ static void xen_region_add(MemoryListener *listener,
                            MemoryRegionSection *section)
 {
     xen_set_memory(listener, section, true);
+    xen_map_iorange(section->offset_within_address_space,
+                    section->size, 1);
 }
 
 static void xen_region_del(MemoryListener *listener,
                            MemoryRegionSection *section)
 {
     xen_set_memory(listener, section, false);
+    xen_unmap_iorange(section->offset_within_address_space,
+                      section->size, 1);
 }
 
 static void xen_sync_dirty_bitmap(XenIOState *state,
@@ -786,35 +795,36 @@ static void xen_io_commit(MemoryListener *listener)
 }
 
 static void xen_io_region_add(MemoryListener *listener,
-                           MemoryRegionSection *section)
+                              MemoryRegionSection *section)
 {
-    printf("io region %s add 0x%lx-0x%lx %p\n",
-           section->mr->name,
-           section->offset_within_address_space,
-           section->offset_within_address_space + section->size - 1,
-           section->address_space);
+    xen_map_iorange(section->offset_within_address_space,
+                    section->size, 0);
 }
 
 static void xen_io_region_del(MemoryListener *listener,
-                           MemoryRegionSection *section)
+                              MemoryRegionSection *section)
 {
+    xen_unmap_iorange(section->offset_within_address_space,
+                      section->size, 0);
 }
 
 static void xen_io_region_nop(MemoryListener *listener,
-                           MemoryRegionSection *section)
+                              MemoryRegionSection *section)
 {
 }
 
 static void xen_io_log_start(MemoryListener *listener,
-                          MemoryRegionSection *section)
+                             MemoryRegionSection *section)
 {
 }
 
-static void xen_io_log_stop(MemoryListener *listener, MemoryRegionSection *section)
+static void xen_io_log_stop(MemoryListener *listener,
+                            MemoryRegionSection *section)
 {
 }
 
-static void xen_io_log_sync(MemoryListener *listener, MemoryRegionSection *section)
+static void xen_io_log_sync(MemoryListener *listener,
+                            MemoryRegionSection *section)
 {
 }
 
@@ -827,14 +837,14 @@ static void xen_io_log_global_stop(MemoryListener *listener)
 }
 
 static void xen_io_eventfd_add(MemoryListener *listener,
-                            MemoryRegionSection *section,
-                            bool match_data, uint64_t data, int fd)
+                               MemoryRegionSection *section,
+                               bool match_data, uint64_t data, int fd)
 {
 }
 
 static void xen_io_eventfd_del(MemoryListener *listener,
-                            MemoryRegionSection *section,
-                            bool match_data, uint64_t data, int fd)
+                               MemoryRegionSection *section,
+                               bool match_data, uint64_t data, int fd)
 {
 }
 

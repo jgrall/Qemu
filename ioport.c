@@ -157,10 +157,6 @@ int register_ioport_read(pio_addr_t start, int length, int size,
         ioport_opaque[i] = opaque;
     }
 
-    if (xen_enabled()) {
-        xen_map_iorange(start, length, 0);
-    }
-
     return 0;
 }
 
@@ -180,10 +176,6 @@ int register_ioport_write(pio_addr_t start, int length, int size,
             hw_error("register_ioport_write: invalid opaque for address 0x%x",
                      i);
         ioport_opaque[i] = opaque;
-    }
-
-    if (xen_enabled()) {
-        xen_map_iorange(start, length, 0);
     }
 
     return 0;
@@ -271,10 +263,6 @@ void isa_unassign_ioport(pio_addr_t start, int length)
     if (ioport_destructor_table[start]) {
         ioport_destructor_table[start](ioport_opaque[start]);
         ioport_destructor_table[start] = NULL;
-    }
-
-    if (xen_enabled()) {
-        xen_unmap_iorange(start, length, 0);
     }
 
     for(i = start; i < start + length; i++) {
