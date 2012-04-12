@@ -2557,8 +2557,6 @@ DEF("xen-attach", 0, QEMU_OPTION_xen_attach,
     "-xen-attach     attach to existing xen domain\n"
     "                xend will use this when starting QEMU\n",
     QEMU_ARCH_ALL)
-DEF("xen-dmid", HAS_ARG, QEMU_OPTION_xen_dmid,
-    "-xen-dmid id  specify the device model id for xenstore\n", QEMU_ARCH_ALL)
 STEXI
 @item -xen-domid @var{id}
 @findex -xen-domid

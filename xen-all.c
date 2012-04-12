@@ -41,6 +41,7 @@ static MemoryRegion *framebuffer;
 static bool xen_in_migration;
 static unsigned int serverid;
 static int is_running = 0;
+static uint32_t xen_dmid = 0;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -1396,6 +1397,12 @@ int xen_hvm_init(void)
     unsigned long ioreq_pfn;
     unsigned long bufioreq_evtchn;
     XenIOState *state;
+    QemuOptsList *list = qemu_find_opts("machine");
+
+    if (!QTAILQ_EMPTY(&list->head)) {
+        xen_dmid = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
+                                       "xen_dmid", 0);
+    }
 
     state = g_malloc0(sizeof (XenIOState));
 
