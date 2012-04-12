@@ -1424,10 +1424,12 @@ int xen_hvm_init(void)
     state->suspend.notify = xen_suspend_notifier;
     qemu_register_suspend_notifier(&state->suspend);
 
-    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid, &serverid);
+    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid);
 
-    if (rc)
+    if (rc < 0)
         hw_error("registered server returned error %d", rc);
+
+    serverid = rc;
 
     ioreq_pfn = xen_iopage();
     DPRINTF("shared page at pfn %lx\n", ioreq_pfn);
