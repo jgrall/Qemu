@@ -43,6 +43,9 @@ static unsigned int serverid;
 static int is_running = 0;
 static uint32_t xen_dmid = 0;
 
+/* Use to tell if we register pci/mmio/pio of default devices */
+int xen_register_default_dev = 0;
+
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
 static inline uint32_t xen_vcpu_eport(shared_iopage_t *shared_page, int i)
@@ -196,6 +199,12 @@ int xen_register_pcidev(PCIDevice *pci_dev)
     /* Fix : missing bus id to be more generic */
     bdf |= pci_dev->devfn;
 
+    if (xen_register_default_dev && xen_dmid != 1) {
+        return 0;
+    }
+
+    return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
+
     xs = xs_open(0);
     if (!xs) {
         fprintf(stderr, "pci_register: Unable to open xenstore\n");
@@ -278,6 +287,8 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
     unsigned int nb;
     unsigned int len;
 
+    return 0;
+
     xs = xs_open(0);
     if (!xs) {
         fprintf(stderr, "check_range: unable to open xenstore\n");
@@ -306,21 +317,20 @@ static int check_range(uint64_t addr, uint64_t size, int is_mmio)
 }
 
 static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
-                            int is_mmio)
+                            int is_mmio, const char *name)
 {
-    static uint64_t previous_addr = ~0;
-
-    /* Don't register multiple times the same ioport */
-    if (!is_mmio) {
-        if (addr == previous_addr)
-            return;
-        previous_addr = addr;
+    /* Don't register xen.ram */
+    if (is_mmio && !strncmp(name, "xen.ram", 7)) {
+        return;
     }
 
+    if (xen_register_default_dev && xen_dmid != 1)
+        return;
+
     if (!is_mmio)
-        printf("try to map io 0x%lx - 0x%lx\n", addr, addr + size - 1);
+        printf("try to map io %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
     else
-        printf("try to map mmio 0x%lx - 0x%lx\n", addr, addr + size - 1);
+        printf("try to map mmio %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
 
     if (!is_running) {
         if (check_range(addr, size, is_mmio)) {
@@ -670,7 +680,7 @@ static void xen_region_add(MemoryListener *listener,
 {
     xen_set_memory(listener, section, true);
     xen_map_iorange(section->offset_within_address_space,
-                    section->size, 1);
+                    section->size, 1, section->mr->name);
 }
 
 static void xen_region_del(MemoryListener *listener,
@@ -799,7 +809,7 @@ static void xen_io_region_add(MemoryListener *listener,
                               MemoryRegionSection *section)
 {
     xen_map_iorange(section->offset_within_address_space,
-                    section->size, 0);
+                    section->size, 0, section->mr->name);
 }
 
 static void xen_io_region_del(MemoryListener *listener,
