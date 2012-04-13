@@ -40,7 +40,6 @@ static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
 static unsigned int serverid;
-static int is_running = 0;
 static uint32_t xen_dmid = 0;
 
 /* Use to tell if we register pci/mmio/pio of default devices */
@@ -160,41 +159,9 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
                               irq_num & 3, level);
 }
 
-static uint32_t str_to_bdf(const char *str)
-{
-    /* We assume that bdf is valid */
-    char *buf;
-    uint32_t bdf;
-    uint32_t tmp;
-
-    bdf = strtol(str, &buf, 16);
-    buf++;
-
-    str = buf;
-    tmp = strtol(str, &buf, 16);
-    bdf = (bdf << 8) | (tmp << 3);
-    buf++;
-
-    str = buf;
-    tmp = strtol(str, &buf, 16);
-    bdf = bdf | tmp;
-
-    return bdf;
-}
-
 int xen_register_pcidev(PCIDevice *pci_dev)
 {
-    struct xs_handle *xs = NULL;
     uint32_t bdf = 0;
-    uint32_t allowed_bdf = 0;
-    char **dir;
-    char path[50];
-    unsigned int nb;
-    unsigned int i;
-    unsigned int len;
-    char *str;
-    int rc = 0;
-
 
     /* Fix : missing bus id to be more generic */
     bdf |= pci_dev->devfn;
@@ -204,36 +171,6 @@ int xen_register_pcidev(PCIDevice *pci_dev)
     }
 
     return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
-
-    xs = xs_open(0);
-    if (!xs) {
-        fprintf(stderr, "pci_register: Unable to open xenstore\n");
-        return 1;
-    }
-
-    snprintf(path, sizeof (path), "/local/domain/%u/image/dms/%u/pci",
-             xen_domid, xen_dmid);
-
-    dir = xs_directory(xs, XBT_NULL, path, &nb);
-    if (dir) {
-        for (i = 0; i < nb; i++) {
-            snprintf(path, sizeof (path), "/local/domain/%u/image/dms/%u/pci/%s",
-                     xen_domid, xen_dmid, dir[i]);
-            str = xs_read(xs, XBT_NULL, path, &len);
-            allowed_bdf = str_to_bdf(str);
-            free(str);
-            if (bdf == allowed_bdf)
-            {
-                rc = xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
-                break;
-            }
-        }
-        free(dir);
-    }
-
-    xs_close(xs);
-
-    return rc;
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
@@ -258,64 +195,6 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
     xen_xc_hvm_inject_msi(xen_xc, xen_domid, addr, data);
 }
 
-static void str_to_range(const char *str, uint64_t *begin, uint64_t *end)
-{
-    char *buf;
-
-    /* We assume that range is valid  */
-    *begin = strtoll(str, &buf, 0);
-    if (buf[0] == '\0') {
-        *end = *begin;
-        return;
-    }
-
-    str = buf + 1;
-    *end = strtoll(str, &buf, 0);
-}
-
-static int check_range(uint64_t addr, uint64_t size, int is_mmio)
-{
-    struct xs_handle *xs = NULL;
-    char **dir;
-    char *str;
-    int rc = 1;
-    int i;
-    uint64_t begin;
-    uint64_t end;
-    char base[70];
-    char path[70];
-    unsigned int nb;
-    unsigned int len;
-
-    return 0;
-
-    xs = xs_open(0);
-    if (!xs) {
-        fprintf(stderr, "check_range: unable to open xenstore\n");
-        return 1;
-    }
-
-    snprintf(base, sizeof (base), "/local/domain/%u/image/dms/%u/%s",
-             xen_domid, xen_dmid, (is_mmio) ? "mmio" : "pio");
-    dir = xs_directory(xs, XBT_NULL, base, &nb);
-
-    if (dir) {
-        for (i = 0; i < nb; i++) {
-            snprintf(path, sizeof (path), "%s/%s", base, dir[i]);
-            str = xs_read(xs, XBT_NULL, path, &len);
-            str_to_range(str, &begin, &end);
-            free(str);
-            if (addr == begin && (addr + size - 1) == end) {
-                rc = 0;
-                break;
-            }
-        }
-        free(dir);
-    }
-
-    return rc;
-}
-
 static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
                             int is_mmio, const char *name)
 {
@@ -328,17 +207,10 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
         return;
 
     if (!is_mmio)
-        printf("try to map io %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
+        printf("map io %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
     else
-        printf("try to map mmio %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
+        printf("map mmio %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
 
-    if (!is_running) {
-        if (check_range(addr, size, is_mmio)) {
-            return;
-         }
-    }
-
-    printf("mapped\n");
     xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
                                         addr, addr + size - 1);
 }
@@ -1318,7 +1190,6 @@ static void xen_change_state_handler(void *opaque, int running,
                                      RunState state)
 {
     if (running) {
-        is_running = 1;
         /* record state running */
         xenstore_record_dm_state(xenstore, "running");
     }
