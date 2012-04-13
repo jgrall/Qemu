@@ -1087,8 +1087,15 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
 
     a20_line = qemu_allocate_irqs(handle_a20_line_change,
                                   x86_env_get_cpu(first_cpu), 2);
-    i8042 = isa_create_simple(isa_bus, "i8042");
-    i8042_setup_a20_line(i8042, &a20_line[0]);
+    /* We emulate keyboard and mouse only if vga is emulate */
+    if (!xen_enabled() || display_type != DT_NOGRAPHIC) {
+        xen_register_default_dev = 0;
+        i8042 = isa_create_simple(isa_bus, "i8042");
+        i8042_setup_a20_line(i8042, &a20_line[0]);
+        xen_register_default_dev = 1;
+    } else {
+        i8042 = NULL;
+    }
     if (!no_vmport) {
         vmport_init(isa_bus);
         vmmouse = isa_try_create(isa_bus, "vmmouse");
