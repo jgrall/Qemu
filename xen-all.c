@@ -44,6 +44,7 @@ static uint32_t xen_dmid = 0;
 
 /* Use to tell if we register pci/mmio/pio of default devices */
 int xen_register_default_dev = 0;
+static int xen_emulate_default_dev = 0;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -166,9 +167,11 @@ int xen_register_pcidev(PCIDevice *pci_dev)
     /* Fix : missing bus id to be more generic */
     bdf |= pci_dev->devfn;
 
-    if (xen_register_default_dev && xen_dmid != 1) {
+    if (xen_register_default_dev && !xen_emulate_default_dev) {
         return 0;
     }
+
+    printf("register pci %x:%x.%x\n", bdf >> 8, (bdf >> 3) & 0x1f, bdf & 0x7);
 
     return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
 }
@@ -203,7 +206,7 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
         return;
     }
 
-    if (xen_register_default_dev && xen_dmid != 1)
+    if (xen_register_default_dev && !xen_emulate_default_dev)
         return;
 
     if (!is_mmio)
@@ -1153,13 +1156,8 @@ static void xenstore_record_dm_state(struct xs_handle *xs, const char *state)
         exit(1);
     }
 
-    if (!xen_dmid) {
-        snprintf(path, sizeof (path), "/local/domain/0/device-model/%u/state", xen_domid);
-    }
-    else {
-        snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/state",
-                 xen_domid, xen_dmid);
-    }
+    snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/state",
+             xen_domid, xen_dmid);
 
     if (!xs_write(xs, XBT_NULL, path, state, strlen(state))) {
         fprintf(stderr, "error recording dm state\n");
@@ -1283,6 +1281,8 @@ int xen_hvm_init(void)
     if (!QTAILQ_EMPTY(&list->head)) {
         xen_dmid = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
                                        "xen_dmid", 0);
+        xen_emulate_default_dev = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
+                                                    "xen_default_dev", 0);
     }
 
     state = g_malloc0(sizeof (XenIOState));

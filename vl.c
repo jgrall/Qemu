@@ -431,7 +431,11 @@ static QemuOptsList qemu_machine_opts = {
             .name = "xen_dmid",
             .type = QEMU_OPT_NUMBER,
             .help = "Xen device model id",
-        }
+        }, {
+            .name = "xen_default_dev",
+            .type = QEMU_OPT_BOOL,
+            .help = "emulate Xen default device (South Bridge, IDE, ...)"
+        },
         { /* End of list */ }
     },
 };
