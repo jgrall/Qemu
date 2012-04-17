@@ -214,7 +214,7 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
                 return;
             }
         }
-        else if (!xen_emulate_default_dev) {
+        else if (!xen_emulate_default_dev && strcmp(name, "serial")) {
             return;
         }
     }
