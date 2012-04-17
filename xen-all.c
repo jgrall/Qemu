@@ -206,8 +206,18 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
         return;
     }
 
-    if (xen_register_default_dev && !xen_emulate_default_dev)
-        return;
+    /* Handle the registration of all default io range */
+    if (xen_register_default_dev) {
+        /* Register ps/2 only if we emulate VGA */
+        if (!strcmp(name, "i8042-data") || !strcmp(name, "i8042-cmd")) {
+            if (display_type == DT_NOGRAPHIC) {
+                return;
+            }
+        }
+        else if (!xen_emulate_default_dev) {
+            return;
+        }
+    }
 
     if (!is_mmio)
         printf("map io %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
