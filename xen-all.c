@@ -1342,12 +1342,14 @@ int xen_hvm_init(void)
         state->ioreq_local_port[i] = rc;
     }
 
-    rc = xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_EVTCHN,
-            &bufioreq_evtchn);
+    rc = xc_hvm_get_ioreq_server_buf_channel(xen_xc, xen_domid, serverid);
     if (rc < 0) {
         fprintf(stderr, "failed to get HVM_PARAM_BUFIOREQ_EVTCHN\n");
         return -1;
     }
+
+    bufioreq_evtchn = rc;
+
     rc = xc_evtchn_bind_interdomain(state->xce_handle, xen_domid,
             (uint32_t)bufioreq_evtchn);
     if (rc == -1) {
