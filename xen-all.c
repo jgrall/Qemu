@@ -40,7 +40,7 @@ static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
 static unsigned int serverid;
-static uint32_t xen_dmid = 0;
+static uint32_t xen_dmid = ~0;
 
 /* Use to tell if we register pci/mmio/pio of default devices */
 int xen_register_default_dev = 0;
@@ -72,8 +72,8 @@ static inline ioreq_t *xen_vcpu_ioreq(shared_iopage_t *shared_page, int vcpu)
 #define HVM_PARAM_BUFIOREQ_EVTCHN 26
 #endif
 
-#if __XEN_LATEST_INTERFACE_VERSION__ < 0x00040200
-static inline unsigned long xen_buffered_iopage()
+#if __XEN_LATEST_INTERFACE_VERSION__ < 0x00040300
+static inline unsigned long xen_buffered_iopage(void)
 {
     unsigned long pfn;
 
@@ -86,9 +86,23 @@ static inline unsigned long xen_iopage(void)
 {
     unsigned long pfn;
 
-    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_PFN, &pfn);
+    xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_IOREQ_PFN, &pfn);
 
     return pfn;
+}
+
+static inline evtchn_port_or_error_t xen_buffered_channel(void)
+{
+    unsigned long evtchn;
+    int rc;
+
+    rc = xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_EVTCHN,
+                          &evtchn);
+
+    if (rc < 0)
+        return rc;
+    else
+        return evtchn;
 }
 #else
 static inline unsigned long xen_buffered_iopage(void)
@@ -110,6 +124,12 @@ static inline unsigned long xen_iopage(void)
 
     return pfn;
 }
+
+static inline evtchn_port_or_error_t xen_buffered_channel(void)
+{
+    return xc_hvm_get_ioreq_server_buf_channel(xen_xc, xen_domid, serverid);
+}
+
 #endif
 
 #define BUFFER_IO_MAX_DELAY  100
@@ -173,7 +193,7 @@ int xen_register_pcidev(PCIDevice *pci_dev)
 
     printf("register pci %x:%x.%x\n", bdf >> 8, (bdf >> 3) & 0x1f, bdf & 0x7);
 
-    return xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
+    return xen_xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
@@ -224,15 +244,15 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
     else
         printf("map mmio %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
 
-    xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid, is_mmio,
-                                        addr, addr + size - 1);
+    xen_xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid,
+                                            is_mmio, addr, addr + size - 1);
 }
 
 static void xen_unmap_iorange(target_phys_addr_t addr, uint64_t size,
                               int is_mmio)
 {
-    xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid,
-                                            is_mmio, addr);
+    xen_xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid,
+                                                is_mmio, addr);
 }
 
 static void xen_suspend_notifier(Notifier *notifier, void *data)
@@ -964,6 +984,7 @@ static void cpu_ioreq_move(ioreq_t *req)
     }
 }
 
+#if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00040300
 static void cpu_ioreq_config_space(ioreq_t *req)
 {
     uint64_t addr = req->addr;
@@ -974,6 +995,7 @@ static void cpu_ioreq_config_space(ioreq_t *req)
     cpu_ioreq_pio(req);
     req->addr = addr;
 }
+#endif
 
 static void handle_ioreq(ioreq_t *req)
 {
@@ -994,9 +1016,11 @@ static void handle_ioreq(ioreq_t *req)
         case IOREQ_TYPE_INVALIDATE:
             xen_invalidate_map_cache();
             break;
+#if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00040300
         case IOREQ_TYPE_PCI_CONFIG:
             cpu_ioreq_config_space(req);
             break;
+#endif
         default:
             hw_error("Invalid ioreq type 0x%x\n", req->type);
     }
@@ -1166,8 +1190,13 @@ static void xenstore_record_dm_state(struct xs_handle *xs, const char *state)
         exit(1);
     }
 
-    snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/state",
-             xen_domid, xen_dmid);
+    if (xen_dmid == ~0) {
+        snprintf(path, sizeof (path), "/local/domain/0/device-model/%u/state",
+                 xen_domid);
+    } else {
+        snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/state",
+                 xen_domid, xen_dmid);
+    }
 
     if (!xs_write(xs, XBT_NULL, path, state, strlen(state))) {
         fprintf(stderr, "error recording dm state\n");
@@ -1290,10 +1319,15 @@ int xen_hvm_init(void)
 
     if (!QTAILQ_EMPTY(&list->head)) {
         xen_dmid = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
-                                       "xen_dmid", 0);
+                                       "xen_dmid", ~0);
         xen_emulate_default_dev = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
                                                     "xen_default_dev", 0);
     }
+
+   if (xen_dmid == ~0) {
+        xen_emulate_default_dev = 1;
+   }
+
 
     state = g_malloc0(sizeof (XenIOState));
 
@@ -1315,7 +1349,7 @@ int xen_hvm_init(void)
     state->suspend.notify = xen_suspend_notifier;
     qemu_register_suspend_notifier(&state->suspend);
 
-    rc = xc_hvm_register_ioreq_server(xen_xc, xen_domid);
+    rc = xen_xc_hvm_register_ioreq_server(xen_xc, xen_domid);
 
     if (rc < 0)
         hw_error("registered server returned error %d", rc);
@@ -1352,7 +1386,7 @@ int xen_hvm_init(void)
         state->ioreq_local_port[i] = rc;
     }
 
-    rc = xc_hvm_get_ioreq_server_buf_channel(xen_xc, xen_domid, serverid);
+    rc = xen_buffered_channel();
     if (rc < 0) {
         fprintf(stderr, "failed to get HVM_PARAM_BUFIOREQ_EVTCHN\n");
         return -1;

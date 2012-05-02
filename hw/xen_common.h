@@ -152,6 +152,40 @@ static inline int xen_xc_hvm_inject_msi(XenXC xen_xc, domid_t dom,
 }
 #endif
 
+/* Xen before 4.3 */
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION < 430
+static inline int xen_xc_hvm_register_pcidev(XenXC xen_xc, domid_t dom,
+        unsigned int serverid, uint32_t bdf)
+{
+    return 0;
+}
+
+static inline int xen_xc_hvm_map_io_range_to_ioreq_server(XenXC xen_xc,
+        domid_t dom, unsigned int serverid, int is_mmio,
+        uint64_t start, uint64_t end)
+{
+    return 1;
+}
+
+static inline int xen_xc_hvm_unmap_io_range_from_ioreq_server(XenXC xen_xc,
+        domid_t dom, unsigned int serverid, int is_mmio, uint64_t start)
+{
+    return 1;
+}
+
+static inline int xen_xc_hvm_register_ioreq_server(XenXC xen_xc, domid_t dom)
+{
+    return 0;
+}
+
+#else
+static inline int xen_xc_hvm_register_pcidev(XenXC xen_xc, domid_t dom,
+        unsigned int serverid, uint32_t bdf)
+{
+    return xc_hvm_register_pcidev(xen_xc, dom, serverid, bdf);
+}
+#endif
+
 void destroy_hvm_domain(bool reboot);
 
 /* shutdown/destroy current domain because of an error */
