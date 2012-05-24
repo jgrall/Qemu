@@ -44,7 +44,9 @@ static uint32_t xen_dmid = ~0;
 
 /* Use to tell if we register pci/mmio/pio of default devices */
 int xen_register_default_dev = 0;
-static int xen_emulate_default_dev = 0;
+static int xen_emulate_default_dev = 1;
+
+int xen_emulate_ide = 0;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -1320,13 +1322,10 @@ int xen_hvm_init(void)
         xen_dmid = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
                                        "xen_dmid", ~0);
         xen_emulate_default_dev = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
-                                                    "xen_default_dev", 0);
+                                                    "xen_default_dev", 1);
+        xen_emulate_ide = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
+                                            "xen_emulate_ide", 1);
     }
-
-   if (xen_dmid == ~0) {
-        xen_emulate_default_dev = 1;
-   }
-
 
     state = g_malloc0(sizeof (XenIOState));
 

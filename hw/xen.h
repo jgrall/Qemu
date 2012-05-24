@@ -23,6 +23,7 @@ extern enum xen_mode xen_mode;
 
 extern bool xen_allowed;
 extern int xen_register_default_dev;
+extern int xen_emulate_ide;
 
 static inline bool xen_enabled(void)
 {

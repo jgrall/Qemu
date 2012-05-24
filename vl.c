@@ -435,6 +435,10 @@ static QemuOptsList qemu_machine_opts = {
             .name = "xen_default_dev",
             .type = QEMU_OPT_BOOL,
             .help = "emulate Xen default device (South Bridge, IDE, ...)"
+        }, {
+            .name = "xen_emulate_ide",
+            .type = QEMU_OPT_BOOL,
+            .help = "emulate IDE with XEN"
         },
         { /* End of list */ }
     },

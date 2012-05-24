@@ -173,23 +173,32 @@ static void pc_init1(MemoryRegion *system_memory,
 
     pc_nic_init(isa_bus, pci_bus);
 
-    ide_drive_get(hd, MAX_IDE_BUS);
-    if (pci_enabled) {
-        PCIDevice *dev;
-        if (xen_enabled()) {
-            dev = pci_piix3_xen_ide_init(pci_bus, hd, piix3_devfn + 1);
+    if (!xen_enabled() || xen_emulate_ide) {
+        xen_register_default_dev = 0;
+        ide_drive_get(hd, MAX_IDE_BUS);
+        if (pci_enabled) {
+            PCIDevice *dev;
+            if (xen_enabled()) {
+                dev = pci_piix3_xen_ide_init(pci_bus, hd, piix3_devfn + 1);
+            } else {
+                dev = pci_piix3_ide_init(pci_bus, hd, piix3_devfn + 1);
+            }
+            idebus[0] = qdev_get_child_bus(&dev->qdev, "ide.0");
+            idebus[1] = qdev_get_child_bus(&dev->qdev, "ide.1");
         } else {
-            dev = pci_piix3_ide_init(pci_bus, hd, piix3_devfn + 1);
+            for(i = 0; i < MAX_IDE_BUS; i++) {
+                ISADevice *dev;
+                dev = isa_ide_init(isa_bus, ide_iobase[i], ide_iobase2[i],
+                                   ide_irq[i],
+                                   hd[MAX_IDE_DEVS * i], hd[MAX_IDE_DEVS * i + 1]);
+                idebus[i] = qdev_get_child_bus(&dev->qdev, "ide.0");
+            }
         }
-        idebus[0] = qdev_get_child_bus(&dev->qdev, "ide.0");
-        idebus[1] = qdev_get_child_bus(&dev->qdev, "ide.1");
-    } else {
-        for(i = 0; i < MAX_IDE_BUS; i++) {
-            ISADevice *dev;
-            dev = isa_ide_init(isa_bus, ide_iobase[i], ide_iobase2[i],
-                               ide_irq[i],
-                               hd[MAX_IDE_DEVS * i], hd[MAX_IDE_DEVS * i + 1]);
-            idebus[i] = qdev_get_child_bus(&dev->qdev, "ide.0");
+        xen_register_default_dev = 1;
+    }
+    else {
+        for (i = 0; i < MAX_IDE_BUS; i++) {
+            idebus[i] = NULL;
         }
     }
 
