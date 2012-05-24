@@ -49,6 +49,7 @@
 #include "qmp-commands.h"
 #include "trace.h"
 #include "exec/cpu-all.h"
+#include "hw/xen.h"
 
 #ifdef DEBUG_ARCH_INIT
 #define DPRINTF(fmt, ...) \
@@ -1054,6 +1055,8 @@ void audio_init(ISABus *isa_bus, PCIBus *pci_bus)
 {
     struct soundhw *c;
 
+    xen_register_default_dev = 0;
+
     for (c = soundhw; c->name; ++c) {
         if (c->enabled) {
             if (c->isa) {
@@ -1067,6 +1070,8 @@ void audio_init(ISABus *isa_bus, PCIBus *pci_bus)
             }
         }
     }
+
+    xen_register_default_dev = 1;
 }
 #else
 void select_soundhw(const char *optarg)
