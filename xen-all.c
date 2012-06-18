@@ -988,13 +988,22 @@ static void cpu_ioreq_move(ioreq_t *req)
 #if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00040300
 static void cpu_ioreq_config_space(ioreq_t *req)
 {
-    uint64_t addr = req->addr;
-    uint64_t cf8 = req->addr & (~0x3);
+    uint64_t cf8 = req->addr;
+    uint32_t tmp = req->size;
+    uint16_t size = req->size & 0xff;
+    uint16_t off = req->size >> 16;
 
-    req->addr = 0xcfc + (addr & 0x3);
+    if ((size + off + 0xcfc) > 0xd00)
+        hw_error("Invalid ioreq config space size = %u off = %u\n",
+                 size, off);
+
+    req->addr = 0xcfc + off;
+    req->size = size;
+
     do_outp(0xcf8, 4, cf8);
     cpu_ioreq_pio(req);
-    req->addr = addr;
+    req->addr = cf8;
+    req->size = tmp;
 }
 #endif
 
