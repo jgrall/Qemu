@@ -450,6 +450,14 @@ go_physmap:
                                    XEN_DOMCTL_MEM_CACHEATTR_WB);
 
     snprintf(path, sizeof(path),
+             "/local/domain/0/device-model/%d/physmap/%"PRIx64"/device_model",
+             xen_domid, (uint64_t)phys_offset);
+    snprintf(value, sizeof(value), "%u", xen_dmid);
+    if (!xs_write(state->xenstore, 0, path, value, strlen(value))) {
+        return -1;
+    }
+
+    snprintf(path, sizeof(path),
             "/local/domain/0/device-model/%d/physmap/%"PRIx64"/start_addr",
             xen_domid, (uint64_t)phys_offset);
     snprintf(value, sizeof(value), "%"PRIx64, (uint64_t)start_addr);
@@ -1277,6 +1285,7 @@ static void xen_read_physmap(XenIOState *state)
     unsigned int len, num, i;
     char path[80], *value = NULL;
     char **entries = NULL;
+    uint32_t dmid = ~0;
 
     snprintf(path, sizeof(path),
             "/local/domain/0/device-model/%d/physmap", xen_domid);
@@ -1285,6 +1294,16 @@ static void xen_read_physmap(XenIOState *state)
         return;
 
     for (i = 0; i < num; i++) {
+        snprintf(path, sizeof(path),
+                 "/local/domain/0/device-model/%d/physmap/%s/device_model",
+                 xen_domid, entries[i]);
+        value = xs_read(state->xenstore, 0, path, &len);
+        if (value) {
+            dmid = strtoul(value, NULL, 10);
+            free(value);
+            if (dmid != xen_dmid)
+                continue;
+        }
         physmap = g_malloc(sizeof (XenPhysmap));
         physmap->phys_offset = strtoull(entries[i], NULL, 16);
         snprintf(path, sizeof(path),
