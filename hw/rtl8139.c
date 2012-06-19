@@ -59,7 +59,6 @@
 #include "loader.h"
 #include "sysemu/sysemu.h"
 #include "qemu/iov.h"
-#include "xen.h"
 
 /* debug RTL8139 card */
 //#define DEBUG_RTL8139 1
@@ -3531,9 +3530,7 @@ static void rtl8139_class_init(ObjectClass *klass, void *data)
 
     k->init = pci_rtl8139_init;
     k->exit = pci_rtl8139_uninit;
-    if (!xen_enabled ()) {
-        k->romfile = "pxe-rtl8139.rom";
-    }
+    k->romfile = "pxe-rtl8139.rom";
     k->vendor_id = PCI_VENDOR_ID_REALTEK;
     k->device_id = PCI_DEVICE_ID_REALTEK_8139;
     k->revision = RTL8139_PCI_REVID; /* >=0x20 is for 8139C+ */
