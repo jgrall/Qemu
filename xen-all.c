@@ -46,6 +46,7 @@ static uint32_t xen_dmid = ~0;
 int xen_register_default_dev = 0;
 static int xen_emulate_default_dev = 1;
 
+ram_addr_t xen_ram_base_alloc = 0;
 int xen_emulate_ide = 0;
 
 /* Compatibility with older version */
@@ -1244,7 +1245,25 @@ static void xen_main_loop_prepare(XenIOState *state)
 static void xen_change_state_handler(void *opaque, int running,
                                      RunState state)
 {
+    RAMBlock *block;
+    ram_addr_t last = 0;
+    char path[50];
+    char slast[50];
+
     if (running) {
+        if (xen_dmid != ~0) {
+            QLIST_FOREACH(block, &ram_list.blocks, next)
+                last = MAX(last, block->offset + block->length);
+            if (last < xen_ram_base_alloc)
+                last = xen_ram_base_alloc;
+            snprintf(path, sizeof (path), "/local/domain/0/dms/%u/%u/end_ram",
+                     xen_domid, xen_dmid);
+            snprintf(slast, sizeof (slast), "0x"RAM_ADDR_FMT, last);
+            if (!xs_write(xenstore, XBT_NULL, path, slast, strlen(slast))) {
+                fprintf(stderr, "Unable to write end ram in xenstore\n");
+                exit(1);
+            }
+        }
         /* record state running */
         xenstore_record_dm_state(xenstore, "running");
     }
@@ -1353,6 +1372,8 @@ int xen_hvm_init(void)
                                                     "xen_default_dev", 1);
         xen_emulate_ide = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
                                             "xen_emulate_ide", 1);
+        xen_ram_base_alloc = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
+                                                 "xen_ram_base_alloc", 0);
     }
 
     state = g_malloc0(sizeof (XenIOState));
