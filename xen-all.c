@@ -1468,9 +1468,14 @@ int xen_hvm_init(void)
         fprintf(stderr, "%s: xen backend core setup failed\n", __FUNCTION__);
         exit(1);
     }
-    xen_be_register("console", &xen_console_ops);
-    xen_be_register("vkbd", &xen_kbdmouse_ops);
-    xen_be_register("qdisk", &xen_blkdev_ops);
+
+    if (xen_emulate_default_dev) {
+        xen_be_register("console", &xen_console_ops);
+        xen_be_register("vkbd", &xen_kbdmouse_ops);
+    }
+    if (xen_emulate_ide) {
+        xen_be_register("qdisk", &xen_blkdev_ops);
+    }
     xen_read_physmap(state);
 
     return 0;
