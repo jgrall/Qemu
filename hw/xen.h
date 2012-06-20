@@ -34,6 +34,34 @@ static inline bool xen_enabled(void)
 #endif
 }
 
+static inline int xen_is_emulated_ide(void)
+{
+#if defined(CONFIG_XEN)
+    return xen_emulate_ide;
+#else
+    return 1;
+#endif
+}
+
+static inline int xen_is_registered_default_dev(void)
+{
+#if defined(CONFIG_XEN)
+    return xen_register_default_dev;
+#else
+    return 1;
+#endif
+}
+
+static inline void xen_set_register_default_dev(int val, int *old)
+{
+#if defined(CONFIG_XEN)
+    if (old) {
+        *old = xen_register_default_dev;
+    }
+    xen_register_default_dev = val;
+#endif
+}
+
 int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num);
 void xen_piix3_set_irq(void *opaque, int irq_num, int level);
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len);
@@ -54,6 +82,15 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size,
                    struct MemoryRegion *mr);
 void xen_modified_memory(ram_addr_t start, ram_addr_t length);
 extern ram_addr_t xen_ram_base_alloc;
+static inline ram_addr_t xen_get_ram_base_alloc(void)
+{
+#if defined(CONFIG_XEN)
+    return xen_ram_base_alloc;
+#else
+    return 0;
+#endif
+}
+
 #endif
 
 struct MemoryRegion;

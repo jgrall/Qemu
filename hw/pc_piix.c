@@ -85,6 +85,7 @@ static void pc_init1(MemoryRegion *system_memory,
     MemoryRegion *pci_memory;
     MemoryRegion *rom_memory;
     void *fw_cfg = NULL;
+    int register_default_dev = 0;
 
     pc_cpus_init(cpu_model);
     pc_acpi_init("acpi-dsdt.aml");
@@ -173,8 +174,8 @@ static void pc_init1(MemoryRegion *system_memory,
 
     pc_nic_init(isa_bus, pci_bus);
 
-    if (!xen_enabled() || xen_emulate_ide) {
-        xen_register_default_dev = 0;
+    if (!xen_enabled() || xen_is_emulated_ide()) {
+        xen_set_register_default_dev(0, &register_default_dev);
         ide_drive_get(hd, MAX_IDE_BUS);
         if (pci_enabled) {
             PCIDevice *dev;
@@ -194,7 +195,7 @@ static void pc_init1(MemoryRegion *system_memory,
                 idebus[i] = qdev_get_child_bus(&dev->qdev, "ide.0");
             }
         }
-        xen_register_default_dev = 1;
+        xen_set_register_default_dev(register_default_dev, NULL);
     }
     else {
         for (i = 0; i < MAX_IDE_BUS; i++) {
@@ -298,9 +299,9 @@ static void pc_xen_hvm_init(QEMUMachineInitArgs *args)
     if (xen_hvm_init() != 0) {
         hw_error("xen hardware virtual machine initialisation failed");
     }
-    xen_register_default_dev = 1;
+    xen_set_register_default_dev(1,  NULL);
     pc_init_pci_no_kvmclock(args);
-    xen_register_default_dev = 0;
+    xen_set_register_default_dev(0, NULL);
     xen_vcpu_init();
 }
 #endif

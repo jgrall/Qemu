@@ -39,14 +39,6 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
 {
 }
 
-void xen_map_iorange(uint64_t addr, uint64_t size, int is_mmio)
-{
-}
-
-void xen_unmap_iorange(uint64_t addr, uint64_t size, int is_mmio)
-{
-}
-
 void xen_cmos_set_s3_resume(void *opaque, int irq, int level)
 {
 }

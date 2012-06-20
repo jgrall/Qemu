@@ -918,7 +918,7 @@ static ram_addr_t find_ram_offset(ram_addr_t size)
 
         end = block->offset + block->length;
         if (xen_enabled()) {
-            end = MAX(end, xen_ram_base_alloc);
+            end = MAX(end, xen_get_ram_base_alloc());
         }
 
         QTAILQ_FOREACH(next_block, &ram_list.blocks, next) {

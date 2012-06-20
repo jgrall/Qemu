@@ -1054,8 +1054,9 @@ void select_soundhw(const char *optarg)
 void audio_init(ISABus *isa_bus, PCIBus *pci_bus)
 {
     struct soundhw *c;
+    int register_default_dev;
 
-    xen_register_default_dev = 0;
+    xen_set_register_default_dev(0, &register_default_dev);
 
     for (c = soundhw; c->name; ++c) {
         if (c->enabled) {
@@ -1071,7 +1072,7 @@ void audio_init(ISABus *isa_bus, PCIBus *pci_bus)
         }
     }
 
-    xen_register_default_dev = 1;
+    xen_set_register_default_dev(register_default_dev, NULL);
 }
 #else
 void select_soundhw(const char *optarg)
