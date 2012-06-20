@@ -917,16 +917,12 @@ static ram_addr_t find_ram_offset(ram_addr_t size)
         ram_addr_t end, next = RAM_ADDR_MAX;
 
         end = block->offset + block->length;
-        if (xen_enabled()) {
-            end = MAX(end, xen_get_ram_base_alloc());
-        }
 
         QTAILQ_FOREACH(next_block, &ram_list.blocks, next) {
             if (next_block->offset >= end) {
                 next = MIN(next, next_block->offset);
             }
         }
-
         if (next - end >= size && next - end < mingap) {
             offset = end;
             mingap = next - end;
@@ -1031,7 +1027,6 @@ ram_addr_t qemu_ram_alloc_from_ptr(ram_addr_t size, void *host,
     qemu_mutex_lock_ramlist();
     new_block->mr = mr;
     new_block->offset = find_ram_offset(size);
-    printf("%s 0x"RAM_ADDR_FMT"\n", mr->name, new_block->offset);
     if (host) {
         new_block->host = host;
         new_block->flags |= RAM_PREALLOC_MASK;

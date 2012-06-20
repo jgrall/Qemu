@@ -439,10 +439,6 @@ static QemuOptsList qemu_machine_opts = {
             .name = "xen_emulate_ide",
             .type = QEMU_OPT_BOOL,
             .help = "emulate IDE with XEN"
-        }, {
-            .name = "xen_ram_base_alloc",
-            .type = QEMU_OPT_NUMBER,
-            .help = "base ram address for Xen memory allocation"
         },
         { /* End of list */ }
     },

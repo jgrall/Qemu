@@ -81,16 +81,6 @@ struct MemoryRegion;
 void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size,
                    struct MemoryRegion *mr);
 void xen_modified_memory(ram_addr_t start, ram_addr_t length);
-extern ram_addr_t xen_ram_base_alloc;
-static inline ram_addr_t xen_get_ram_base_alloc(void)
-{
-#if defined(CONFIG_XEN)
-    return xen_ram_base_alloc;
-#else
-    return 0;
-#endif
-}
-
 #endif
 
 struct MemoryRegion;
