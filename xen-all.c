@@ -101,10 +101,11 @@ static inline evtchn_port_or_error_t xen_buffered_channel(void)
     rc = xc_get_hvm_param(xen_xc, xen_domid, HVM_PARAM_BUFIOREQ_EVTCHN,
                           &evtchn);
 
-    if (rc < 0)
+    if (rc < 0) {
         return rc;
-    else
+    } else {
         return evtchn;
+    }
 }
 #else
 static inline unsigned long xen_buffered_iopage(void)
@@ -193,8 +194,8 @@ int xen_register_pcidev(PCIDevice *pci_dev)
         return 0;
     }
 
-    printf("register pci %x:%x.%x %s\n", bdf >> 8, (bdf >> 3) & 0x1f,
-           bdf & 0x7, pci_dev->name);
+    DPRINTF("register pci %x:%x.%x %s\n", bdf >> 8, (bdf >> 3) & 0x1f,
+            bdf & 0x7, pci_dev->name);
 
     return xen_xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
 }
@@ -242,10 +243,8 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
         }
     }
 
-    if (!is_mmio)
-        printf("map io %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
-    else
-        printf("map mmio %s 0x%lx - 0x%lx\n", name, addr, addr + size - 1);
+    DPRINTF("map %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
+            (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
 
     xen_xc_hvm_map_io_range_to_ioreq_server(xen_xc, xen_domid, serverid,
                                             is_mmio, addr, addr + size - 1);
@@ -254,6 +253,9 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
 static void xen_unmap_iorange(target_phys_addr_t addr, uint64_t size,
                               int is_mmio)
 {
+    DPRINTF("unmap %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
+            (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
+
     xen_xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid,
                                                 is_mmio, addr);
 }
@@ -1377,8 +1379,9 @@ int xen_hvm_init(void)
 
     rc = xen_xc_hvm_register_ioreq_server(xen_xc, xen_domid);
 
-    if (rc < 0)
+    if (rc < 0) {
         hw_error("registered server returned error %d", rc);
+    }
 
     serverid = rc;
 
