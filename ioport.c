@@ -28,7 +28,6 @@
 #include "exec/ioport.h"
 #include "trace.h"
 #include "exec/memory.h"
-#include "hw/xen.h"
 
 /***********************************************************/
 /* IO Port */
@@ -156,7 +155,6 @@ int register_ioport_read(pio_addr_t start, int length, int size,
                      i);
         ioport_opaque[i] = opaque;
     }
-
     return 0;
 }
 
@@ -177,9 +175,7 @@ int register_ioport_write(pio_addr_t start, int length, int size,
                      i);
         ioport_opaque[i] = opaque;
     }
-
     return 0;
-
 }
 
 static uint32_t ioport_readb_thunk(void *opaque, uint32_t addr)
@@ -264,7 +260,6 @@ void isa_unassign_ioport(pio_addr_t start, int length)
         ioport_destructor_table[start](ioport_opaque[start]);
         ioport_destructor_table[start] = NULL;
     }
-
     for(i = start; i < start + length; i++) {
         ioport_read_table[0][i] = NULL;
         ioport_read_table[1][i] = NULL;
