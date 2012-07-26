@@ -765,13 +765,15 @@ static void xen_io_log_global_stop(MemoryListener *listener)
 
 static void xen_io_eventfd_add(MemoryListener *listener,
                                MemoryRegionSection *section,
-                               bool match_data, uint64_t data, int fd)
+                               bool match_data, uint64_t data,
+                               EventNotifier *e)
 {
 }
 
 static void xen_io_eventfd_del(MemoryListener *listener,
                                MemoryRegionSection *section,
-                               bool match_data, uint64_t data, int fd)
+                               bool match_data, uint64_t data,
+                               EventNotifier *e)
 {
 }
 
