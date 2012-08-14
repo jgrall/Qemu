@@ -1486,7 +1486,7 @@ int main(void) {
 }
 EOF
       compile_prog "" "$xen_libs"
-    ; then
+    then
     xen_ctrl_version=430
     xen=yes
  # Xen unstable
