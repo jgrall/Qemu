@@ -155,7 +155,8 @@ static inline int xen_xc_hvm_inject_msi(XenXC xen_xc, domid_t dom,
 /* Xen before 4.3 */
 #if CONFIG_XEN_CTRL_INTERFACE_VERSION < 430
 static inline int xen_xc_hvm_register_pcidev(XenXC xen_xc, domid_t dom,
-        unsigned int serverid, uint32_t bdf)
+        unsigned int serverid, uint8_t domain,
+        uint8_t bus, uint8_t device, uint8_t function)
 {
     return 0;
 }
@@ -180,9 +181,11 @@ static inline int xen_xc_hvm_register_ioreq_server(XenXC xen_xc, domid_t dom)
 
 #else
 static inline int xen_xc_hvm_register_pcidev(XenXC xen_xc, domid_t dom,
-        unsigned int serverid, uint32_t bdf)
+        unsigned int serverid, uint8_t domain,
+        uint8_t bus, uint8_t device, uint8_t function)
 {
-    return xc_hvm_register_pcidev(xen_xc, dom, serverid, bdf);
+    return xc_hvm_register_pcidev(xen_xc, dom, serverid, domain,
+                                  bus, device, function);
 }
 
 static inline int xen_xc_hvm_map_io_range_to_ioreq_server(XenXC xen_xc,

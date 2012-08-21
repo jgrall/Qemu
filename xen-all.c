@@ -185,11 +185,6 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
 
 int xen_register_pcidev(PCIDevice *pci_dev)
 {
-    uint32_t bdf = 0;
-
-    /* Fix : missing bus id to be more generic */
-    bdf |= pci_dev->devfn;
-
     if (xen_register_default_dev && !xen_emulate_default_dev) {
         return 0;
     }
@@ -197,7 +192,9 @@ int xen_register_pcidev(PCIDevice *pci_dev)
     DPRINTF("register pci %x:%x.%x %s\n", bdf >> 8, (bdf >> 3) & 0x1f,
             bdf & 0x7, pci_dev->name);
 
-    return xen_xc_hvm_register_pcidev(xen_xc, xen_domid, serverid, bdf);
+    return xen_xc_hvm_register_pcidev(xen_xc, xen_domid, serverid,
+                                      0, 0, pci_dev->devfn >> 3,
+                                      pci_dev->devfn & 0x7);
 }
 
 void xen_piix_pci_write_config_client(uint32_t address, uint32_t val, int len)
