@@ -189,8 +189,8 @@ int xen_register_pcidev(PCIDevice *pci_dev)
         return 0;
     }
 
-    DPRINTF("register pci %x:%x.%x %s\n", bdf >> 8, (bdf >> 3) & 0x1f,
-            bdf & 0x7, pci_dev->name);
+    DPRINTF("register pci %x:%x.%x %s\n", 0, (pci_dev->devfn >> 3) & 0x1f,
+            pci_dev->devfn & 0x7, pci_dev->name);
 
     return xen_xc_hvm_register_pcidev(xen_xc, xen_domid, serverid,
                                       0, 0, pci_dev->devfn >> 3,
