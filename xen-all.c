@@ -248,7 +248,7 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
 }
 
 static void xen_unmap_iorange(target_phys_addr_t addr, uint64_t size,
-                              int is_mmio)
+                              int is_mmio, const char *name)
 {
     DPRINTF("unmap %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
             (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
@@ -601,7 +601,7 @@ static void xen_region_del(MemoryListener *listener,
 {
     xen_set_memory(listener, section, false);
     xen_unmap_iorange(section->offset_within_address_space,
-                      section->size, 1);
+                      section->size, 1, section->mr->name);
 }
 
 static void xen_sync_dirty_bitmap(XenIOState *state,
@@ -729,7 +729,7 @@ static void xen_io_region_del(MemoryListener *listener,
                               MemoryRegionSection *section)
 {
     xen_unmap_iorange(section->offset_within_address_space,
-                      section->size, 0);
+                      section->size, 0, section->mr->name);
 }
 
 static void xen_io_region_nop(MemoryListener *listener,
