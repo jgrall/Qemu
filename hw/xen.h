@@ -22,7 +22,6 @@ extern uint32_t xen_domid;
 extern enum xen_mode xen_mode;
 
 extern bool xen_allowed;
-extern int xen_register_default_dev;
 extern int xen_emulate_ide;
 
 static inline bool xen_enabled(void)
@@ -40,25 +39,6 @@ static inline int xen_is_emulated_ide(void)
     return xen_emulate_ide;
 #else
     return 1;
-#endif
-}
-
-static inline int xen_is_registered_default_dev(void)
-{
-#if defined(CONFIG_XEN)
-    return xen_register_default_dev;
-#else
-    return 1;
-#endif
-}
-
-static inline void xen_set_register_default_dev(int val, int *old)
-{
-#if defined(CONFIG_XEN)
-    if (old) {
-        *old = xen_register_default_dev;
-    }
-    xen_register_default_dev = val;
 #endif
 }
 

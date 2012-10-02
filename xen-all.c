@@ -42,8 +42,6 @@ static bool xen_in_migration;
 static unsigned int serverid;
 static uint32_t xen_dmid = ~0;
 
-/* Use to tell if we register pci/mmio/pio of default devices */
-int xen_register_default_dev = 0;
 static int xen_emulate_default_dev = 1;
 
 int xen_emulate_ide = 0;
@@ -185,9 +183,12 @@ void xen_piix3_set_irq(void *opaque, int irq_num, int level)
 
 int xen_register_pcidev(PCIDevice *pci_dev)
 {
-    if (xen_register_default_dev && !xen_emulate_default_dev) {
+    /* List of default devices */
+    if ((!strcmp("i440FX", pci_dev->name)
+         || !strcmp("PIIX3-xen", pci_dev->name)
+         || !strcmp("xen-platform", pci_dev->name)
+         || !strcmp("PIIX4_PM", pci_dev->name)) && !xen_emulate_default_dev)
         return 0;
-    }
 
     DPRINTF("register pci %x:%x.%x %s\n", 0, (pci_dev->devfn >> 3) & 0x1f,
             pci_dev->devfn & 0x7, pci_dev->name);
@@ -223,22 +224,45 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
                             int is_mmio, const char *name)
 {
     /* Don't register xen.ram */
-    if (is_mmio && !strncmp(name, "xen.ram", 7)) {
+    if (is_mmio && !strcmp(name, "xen.ram"))
         return;
-    }
 
-    /* Handle the registration of all default io range */
-    if (xen_register_default_dev) {
-        /* Register ps/2 only if we emulate VGA */
-        if (!strcmp(name, "i8042-data") || !strcmp(name, "i8042-cmd")) {
-            if (display_type == DT_NOGRAPHIC) {
-                return;
-            }
-        }
-        else if (!xen_emulate_default_dev && strcmp(name, "serial")) {
-            return;
-        }
-    }
+    /* List of default devices */
+    if ((!strcmp("xen-apic-msi", name)
+         || !strcmp("xen-fixed", name) /* Xen platform */
+         || !strcmp("port92", name) /* A20 line */
+         || !strcmp("elcr", name) /* Edge Level Control Register for i8259 */
+         || !strcmp("rtc", name) /* A part of RTC is emulated in Xen and QEMU */
+         /* Keyboard, mouse */
+         || !strcmp("i8042-data", name)
+         || !strcmp("i8042-cmd", name)
+         /* PIIX4 default ioranges */
+         || !strcmp("apm-io", name)
+         || !strcmp("piix4-acpi", name)
+         || !strcmp("piix4-smb", name)
+         || !strcmp("piix4-acpi-hot", name)
+         || !strcmp("piix4-pci-hot", name)
+         || !strcmp("piix4-pciej-hot", name)
+         || !strcmp("piix4-pcirmv-hot", name)) && !xen_emulate_default_dev)
+        return;
+
+    /* List of range that we don't need to register because they are unused */
+    if (!strcmp("fdc", name) /* Floppy is not emulated */
+        || !strcmp("ioapic", name) /* Emulated by Xen */
+        /* Misc iorange */
+        || !strcmp("kvmvapic", name)
+        || !strcmp("ioport80", name)
+        || !strcmp("ioportF0", name)
+        /* Config address and date registers for PCI are emulated by Xen */
+        || !strcmp("pci-conf-idx", name)
+        || !strcmp("pci-conf-data", name)
+        || !strcmp("hpet", name) /* emulated by Xen */
+        /* DMA is unused */
+        || !strcmp("dma-chan", name)
+        || !strcmp("dma-page", name)
+        || !strcmp ("dma-cont", name)
+        )
+        return;
 
     DPRINTF("map %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
             (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
