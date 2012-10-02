@@ -85,6 +85,8 @@ static void pc_init1(MemoryRegion *system_memory,
     MemoryRegion *pci_memory;
     MemoryRegion *rom_memory;
     void *fw_cfg = NULL;
+    int emulate_ide = 1;
+    QemuOptsList *list;
 
     pc_cpus_init(cpu_model);
     pc_acpi_init("acpi-dsdt.aml");
@@ -173,7 +175,13 @@ static void pc_init1(MemoryRegion *system_memory,
 
     pc_nic_init(isa_bus, pci_bus);
 
-    if (!xen_enabled() || xen_is_emulated_ide()) {
+    list = qemu_find_opts("machine");
+    if (!QTAILQ_EMPTY(&list->head)) {
+        emulate_ide = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
+                                        "emulate_ide", 1);
+    }
+
+    if (emulate_ide) {
         ide_drive_get(hd, MAX_IDE_BUS);
         if (pci_enabled) {
             PCIDevice *dev;

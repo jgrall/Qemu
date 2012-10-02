@@ -437,9 +437,9 @@ static QemuOptsList qemu_machine_opts = {
             .help = "emulate Xen default devices (i440FX, PIIX3-xen,"
                     " xen-platform, PIIX4_PM, i8042, elcr, rtc)"
         }, {
-            .name = "xen_emulate_ide",
+            .name = "emulate_ide",
             .type = QEMU_OPT_BOOL,
-            .help = "emulate IDE with XEN"
+            .help = "emulate IDE (default on)"
         },
         { /* End of list */ }
     },

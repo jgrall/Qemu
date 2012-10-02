@@ -22,7 +22,6 @@ extern uint32_t xen_domid;
 extern enum xen_mode xen_mode;
 
 extern bool xen_allowed;
-extern int xen_emulate_ide;
 
 static inline bool xen_enabled(void)
 {
@@ -30,15 +29,6 @@ static inline bool xen_enabled(void)
     return xen_allowed;
 #else
     return 0;
-#endif
-}
-
-static inline int xen_is_emulated_ide(void)
-{
-#if defined(CONFIG_XEN)
-    return xen_emulate_ide;
-#else
-    return 1;
 #endif
 }
 
