@@ -18,6 +18,14 @@ enum xen_mode {
     XEN_ATTACH        // attach to xen domain created by xend
 };
 
+
+/* Xen Platform unplug event */
+#define UNPLUG_ALL_IDE_DISKS 1
+#define UNPLUG_ALL_NICS 2
+#define UNPLUG_AUX_IDE_DISKS 3
+
+#define XEN_PLATFORM_IOPORT 0x10
+
 extern uint32_t xen_domid;
 extern enum xen_mode xen_mode;
 

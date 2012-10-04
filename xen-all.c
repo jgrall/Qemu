@@ -1036,6 +1036,17 @@ static void cpu_ioreq_config_space(ioreq_t *req)
     req->addr = cf8;
     req->size = tmp;
 }
+
+static void cpu_ioreq_event(ioreq_t *req)
+{
+    if (req->data & IOREQ_EVENT_UNPLUG_ALL_IDE_DISKS)
+        do_outp(XEN_PLATFORM_IOPORT, 2, UNPLUG_ALL_IDE_DISKS);
+    if (req->data & IOREQ_EVENT_UNPLUG_ALL_NICS)
+        do_outp(XEN_PLATFORM_IOPORT, 2, UNPLUG_ALL_NICS);
+    if (req->data & IOREQ_EVENT_UNPLUG_AUX_IDE_DISKS)
+        do_outp(XEN_PLATFORM_IOPORT, 2, UNPLUG_AUX_IDE_DISKS);
+}
+
 #endif
 
 static void handle_ioreq(ioreq_t *req)
@@ -1060,6 +1071,9 @@ static void handle_ioreq(ioreq_t *req)
 #if __XEN_LATEST_INTERFACE_VERSION__ >= 0x00040300
         case IOREQ_TYPE_PCI_CONFIG:
             cpu_ioreq_config_space(req);
+            break;
+        case IOREQ_TYPE_EVENT:
+            cpu_ioreq_event(req);
             break;
 #endif
         default:
