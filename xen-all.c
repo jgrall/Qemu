@@ -226,7 +226,9 @@ static void xen_map_iorange(MemoryRegionSection *section, int is_mmio)
 
     /* Don't register ram region */
     if (memory_region_is_ram(section->mr)) {
-        return;
+        fprintf(stderr, "Skip %s\n", section->mr->name);
+        if (!strcmp("xen.ram", section->mr->name))
+            return;
     }
 
     /* List of default devices */
