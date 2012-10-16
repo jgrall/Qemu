@@ -218,12 +218,16 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
     xen_xc_hvm_inject_msi(xen_xc, xen_domid, addr, data);
 }
 
-static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
-                            int is_mmio, const char *name)
+static void xen_map_iorange(MemoryRegionSection *section, int is_mmio)
 {
-    /* Don't register xen.ram */
-    if (is_mmio && !strcmp(name, "xen.ram"))
+    target_phys_addr_t addr = section->offset_within_address_space;
+    uint64_t size = section->size;
+    const char *name = section->mr->name;
+
+    /* Don't register ram region */
+    if (memory_region_is_ram(section->mr)) {
         return;
+    }
 
     /* List of default devices */
     if ((!strcmp("xen-apic-msi", name)
@@ -241,8 +245,9 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
          || !strcmp("piix4-acpi-hot", name)
          || !strcmp("piix4-pci-hot", name)
          || !strcmp("piix4-pciej-hot", name)
-         || !strcmp("piix4-pcirmv-hot", name)) && !xen_emulate_default_dev)
+         || !strcmp("piix4-pcirmv-hot", name)) && !xen_emulate_default_dev) {
         return;
+    }
 
     /* List of range that we don't need to register because they are unused */
     if (!strcmp("fdc", name) /* Floppy is not emulated */
@@ -259,8 +264,9 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
         || !strcmp("dma-chan", name)
         || !strcmp("dma-page", name)
         || !strcmp ("dma-cont", name)
-        )
+        ) {
         return;
+    }
 
     DPRINTF("map %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
             (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
@@ -269,11 +275,17 @@ static void xen_map_iorange(target_phys_addr_t addr, uint64_t size,
                                             is_mmio, addr, addr + size - 1);
 }
 
-static void xen_unmap_iorange(target_phys_addr_t addr, uint64_t size,
-                              int is_mmio, const char *name)
+static void xen_unmap_iorange(MemoryRegionSection *section, int is_mmio)
 {
+    target_phys_addr_t addr = section->offset_within_address_space;
+
+    if (memory_region_is_ram(section->mr)) {
+        return;
+    }
+
     DPRINTF("unmap %s %s 0x"TARGET_FMT_plx" - 0x"TARGET_FMT_plx"\n",
-            (is_mmio) ? "mmio" : "io", name, addr, addr + size - 1);
+            (is_mmio) ? "mmio" : "io", section->mr->name,
+            addr, addr + section->size - 1);
 
     xen_xc_hvm_unmap_io_range_from_ioreq_server(xen_xc, xen_domid, serverid,
                                                 is_mmio, addr);
@@ -614,16 +626,14 @@ static void xen_region_add(MemoryListener *listener,
                            MemoryRegionSection *section)
 {
     xen_set_memory(listener, section, true);
-    xen_map_iorange(section->offset_within_address_space,
-                    section->size, 1, section->mr->name);
+    xen_map_iorange(section, 1);
 }
 
 static void xen_region_del(MemoryListener *listener,
                            MemoryRegionSection *section)
 {
     xen_set_memory(listener, section, false);
-    xen_unmap_iorange(section->offset_within_address_space,
-                      section->size, 1, section->mr->name);
+    xen_unmap_iorange(section, 1);
 }
 
 static void xen_sync_dirty_bitmap(XenIOState *state,
@@ -743,15 +753,13 @@ static void xen_io_commit(MemoryListener *listener)
 static void xen_io_region_add(MemoryListener *listener,
                               MemoryRegionSection *section)
 {
-    xen_map_iorange(section->offset_within_address_space,
-                    section->size, 0, section->mr->name);
+    xen_map_iorange(section, 0);
 }
 
 static void xen_io_region_del(MemoryListener *listener,
                               MemoryRegionSection *section)
 {
-    xen_unmap_iorange(section->offset_within_address_space,
-                      section->size, 0, section->mr->name);
+    xen_unmap_iorange(section, 0);
 }
 
 static void xen_io_region_nop(MemoryListener *listener,
