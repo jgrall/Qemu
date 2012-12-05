@@ -220,7 +220,7 @@ void xen_hvm_inject_msi(uint64_t addr, uint32_t data)
 
 static void xen_map_iorange(MemoryRegionSection *section, int is_mmio)
 {
-    target_phys_addr_t addr = section->offset_within_address_space;
+    hwaddr addr = section->offset_within_address_space;
     uint64_t size = section->size;
     const char *name = section->mr->name;
 
@@ -279,7 +279,7 @@ static void xen_map_iorange(MemoryRegionSection *section, int is_mmio)
 
 static void xen_unmap_iorange(MemoryRegionSection *section, int is_mmio)
 {
-    target_phys_addr_t addr = section->offset_within_address_space;
+    hwaddr addr = section->offset_within_address_space;
 
     if (memory_region_is_ram(section->mr)) {
         return;
@@ -744,14 +744,6 @@ void qmp_xen_set_global_dirty_log(bool enable, Error **errp)
     }
 }
 
-static void xen_io_begin(MemoryListener *listener)
-{
-}
-
-static void xen_io_commit(MemoryListener *listener)
-{
-}
-
 static void xen_io_region_add(MemoryListener *listener,
                               MemoryRegionSection *section)
 {
@@ -764,61 +756,9 @@ static void xen_io_region_del(MemoryListener *listener,
     xen_unmap_iorange(section, 0);
 }
 
-static void xen_io_region_nop(MemoryListener *listener,
-                              MemoryRegionSection *section)
-{
-}
-
-static void xen_io_log_start(MemoryListener *listener,
-                             MemoryRegionSection *section)
-{
-}
-
-static void xen_io_log_stop(MemoryListener *listener,
-                            MemoryRegionSection *section)
-{
-}
-
-static void xen_io_log_sync(MemoryListener *listener,
-                            MemoryRegionSection *section)
-{
-}
-
-static void xen_io_log_global_start(MemoryListener *listener)
-{
-}
-
-static void xen_io_log_global_stop(MemoryListener *listener)
-{
-}
-
-static void xen_io_eventfd_add(MemoryListener *listener,
-                               MemoryRegionSection *section,
-                               bool match_data, uint64_t data,
-                               EventNotifier *e)
-{
-}
-
-static void xen_io_eventfd_del(MemoryListener *listener,
-                               MemoryRegionSection *section,
-                               bool match_data, uint64_t data,
-                               EventNotifier *e)
-{
-}
-
 static MemoryListener xen_io_listener = {
-    .begin = xen_io_begin,
-    .commit = xen_io_commit,
     .region_add = xen_io_region_add,
     .region_del = xen_io_region_del,
-    .region_nop = xen_io_region_nop,
-    .log_start = xen_io_log_start,
-    .log_stop = xen_io_log_stop,
-    .log_sync = xen_io_log_sync,
-    .log_global_start = xen_io_log_global_start,
-    .log_global_stop = xen_io_log_global_stop,
-    .eventfd_add = xen_io_eventfd_add,
-    .eventfd_del = xen_io_eventfd_del,
     .priority = 10,
 };
 
@@ -1489,7 +1429,7 @@ int xen_hvm_init(void)
     state->log_for_dirtybit = NULL;
 
     state->io_listener = xen_io_listener;
-    memory_listener_register(&state->io_listener, get_system_io());
+    memory_listener_register(&state->io_listener, &address_space_io);
 
     /* Initialize backend core & drivers */
     if (xen_be_init() != 0) {
