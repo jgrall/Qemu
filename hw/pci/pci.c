@@ -34,7 +34,7 @@
 #include "hw/pci/msi.h"
 #include "hw/pci/msix.h"
 #include "exec/address-spaces.h"
-#include "xen.h"
+#include "hw/xen.h"
 
 //#define DEBUG_PCI
 #ifdef DEBUG_PCI
