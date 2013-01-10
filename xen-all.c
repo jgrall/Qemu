@@ -535,7 +535,7 @@ static int xen_remove_from_physmap(XenIOState *state,
     phys_offset = physmap->phys_offset;
     size = physmap->size;
 
-    DPRINTF("unmapping vram to %"HWADDR_PRIx" - %"HWADDR_PRIx", from ",
+    DPRINTF("unmapping vram to %"HWADDR_PRIx" - %"HWADDR_PRIx", from "
             "%"HWADDR_PRIx"\n", phys_offset, phys_offset + size, start_addr);
 
     size >>= TARGET_PAGE_BITS;
