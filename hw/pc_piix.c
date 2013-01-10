@@ -44,6 +44,7 @@
 #include "exec/memory.h"
 #include "exec/address-spaces.h"
 #include "cpu.h"
+#include "qemu/config-file.h"
 #ifdef CONFIG_XEN
 #  include <xen/hvm/hvm_info_table.h>
 #endif
@@ -85,8 +86,8 @@ static void pc_init1(MemoryRegion *system_memory,
     MemoryRegion *pci_memory;
     MemoryRegion *rom_memory;
     void *fw_cfg = NULL;
-    int emulate_ide = 1;
-    QemuOptsList *list;
+    bool emulate_ide = true;
+    QemuOpts *machine_opts;
 
     pc_cpus_init(cpu_model);
     pc_acpi_init("acpi-dsdt.aml");
@@ -175,10 +176,9 @@ static void pc_init1(MemoryRegion *system_memory,
 
     pc_nic_init(isa_bus, pci_bus);
 
-    list = qemu_find_opts("machine");
-    if (!QTAILQ_EMPTY(&list->head)) {
-        emulate_ide = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
-                                        "emulate_ide", 1);
+    machine_opts = qemu_opts_find(qemu_find_opts("machine"), 0);
+    if (machine_opts) {
+        emulate_ide = qemu_opt_get_bool(machine_opts, "emulate_ide", true);
     }
 
     if (emulate_ide) {
