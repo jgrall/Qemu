@@ -42,7 +42,7 @@ static bool xen_in_migration;
 static unsigned int serverid;
 static uint32_t xen_dmid = ~0;
 
-static int xen_emulate_default_dev = 1;
+static bool xen_emulate_default_dev = true;
 
 /* Compatibility with older version */
 #if __XEN_LATEST_INTERFACE_VERSION__ < 0x0003020a
@@ -1331,16 +1331,15 @@ int xen_hvm_init(void)
     unsigned long ioreq_pfn;
     unsigned long bufioreq_evtchn;
     XenIOState *state;
-    QemuOptsList *list = qemu_find_opts("machine");
-    int emulate_ide = 1;
+    QemuOpts *machine_opts;
+    bool emulate_ide = true;
 
-    if (!QTAILQ_EMPTY(&list->head)) {
-        xen_dmid = qemu_opt_get_number(QTAILQ_FIRST(&list->head),
-                                       "xen_dmid", ~0);
-        xen_emulate_default_dev = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
-                                                    "xen_default_dev", 1);
-        emulate_ide = qemu_opt_get_bool(QTAILQ_FIRST(&list->head),
-                                        "emulate_ide", 1);
+    machine_opts = qemu_opts_find(qemu_find_opts("machine"), 0);
+    if (!machine_opts) {
+        xen_dmid = qemu_opt_get_number(machine_opts, "xen_dmid", ~0);
+        xen_emulate_default_dev = qemu_opt_get_bool(machine_opts,
+                                                    "xen_default_dev", true);
+        emulate_ide = qemu_opt_get_bool(machine_opts, "emulate_ide", true);
     }
 
     state = g_malloc0(sizeof (XenIOState));
