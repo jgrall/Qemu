@@ -1335,7 +1335,7 @@ int xen_hvm_init(void)
     bool emulate_ide = true;
 
     machine_opts = qemu_opts_find(qemu_find_opts("machine"), 0);
-    if (!machine_opts) {
+    if (machine_opts) {
         xen_dmid = qemu_opt_get_number(machine_opts, "xen_dmid", ~0);
         xen_emulate_default_dev = qemu_opt_get_bool(machine_opts,
                                                     "xen_default_dev", true);
