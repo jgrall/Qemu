@@ -18,7 +18,6 @@
 #include "exec/ioport.h"
 #include "qemu/bitops.h"
 #include "sysemu/kvm.h"
-#include "hw/xen.h"
 #include <assert.h>
 
 #include "exec/memory-internal.h"
